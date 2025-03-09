@@ -6,8 +6,6 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.31", features = ["derive"] }
 minify-html = "0.15.0"
-notify = "8.0.0"
-notify-debouncer-mini = "0.6.0"
 pulldown-cmark = "0.13.0"
 regex = "1.11.1"
 serde = {version="1.0.218", features = ["derive"]}
