@@ -1,5 +1,11 @@
 mod build;
+mod file_ops;
+mod listing;
+mod markdown;
+mod paths;
 mod serve;
+mod utils;
+
 
 use clap::{Parser, Subcommand};
 use std::error::Error;
