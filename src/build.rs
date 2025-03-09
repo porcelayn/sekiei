@@ -58,13 +58,20 @@ fn extract_frontmatter(content: &str) -> Result<(YamlValue, &str), Box<dyn Error
 
         Ok((frontmatter, md_content))
     } else {
-        eprintln!(
-            "Content starts with: {}",
-            &trimmed_content[..50.min(trimmed_content.len())]
-        );
-        eprintln!("Could not find end pattern '\\n---' in content");
         Err("Frontmatter end delimiter not found".into())
     }
+}
+
+fn sanitize_filename(path: &str) -> String {
+    let mut sanitized = String::new();
+    for c in path.chars() {
+        if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' {
+            sanitized.push(c);
+        } else {
+            sanitized.push_str(&format!("-u{:04x}", c as u32));
+        }
+    }
+    sanitized.replace('/', "-")
 }
 
 fn process_paths(markdown: &str, current_path: &Path) -> String {
@@ -106,7 +113,6 @@ fn process_alternative_images(markdown: &str, current_path: &Path) -> String {
     }).to_string()
 }
 
-
 fn find_unique_image(image_name: &str, current_path: &Path) -> String {
     if image_name.contains('/') {
         return resolve_path(image_name, current_path);
@@ -126,12 +132,12 @@ fn find_unique_image(image_name: &str, current_path: &Path) -> String {
     }
     
     match matches.len() {
-        0 => {
-            resolve_path(image_name, current_path)
-        }
+        0 => resolve_path(image_name, current_path),
         1 => {
-            let match_path = matches[0].strip_prefix("content").unwrap_or(&matches[0]);
-            format!("/static/{}", match_path.to_string_lossy().replace('\\', "/"))
+            let match_path = matches[0]
+                .strip_prefix("content")
+                .unwrap_or(&matches[0]);
+            format!("/static/{}", sanitize_filename(&match_path.to_string_lossy()))
         }
         _ => {
             for dir_path in ["content"].iter() {
@@ -142,75 +148,14 @@ fn find_unique_image(image_name: &str, current_path: &Path) -> String {
                     
                     let file_name = entry.file_name().to_string_lossy();
                     if file_name == image_name {
-                        let match_path = entry.path().strip_prefix("content").unwrap_or(entry.path());
-                        return format!("/static/{}", match_path.to_string_lossy().replace('\\', "/"));
-                    }
-                }
-            }
-            
-            resolve_path(image_name, current_path)
-        }
-    }
-}
-
-fn find_unique_internal_link(link_name: &str) -> String {
-    let mut matches = Vec::new();
-    
-    for entry in WalkDir::new("content").into_iter().filter_map(|e| e.ok()) {
-        if !entry.file_type().is_file() {
-            continue;
-        }
-        
-        let file_name = entry.file_name().to_string_lossy();
-        let file_stem = entry.path()
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy();
-            
-        if file_name.ends_with(".md") && file_stem == link_name {
-            matches.push(entry.path().to_path_buf());
-        }
-    }
-    
-    match matches.len() {
-        0 => {
-            get_internal_link_path(link_name)
-        }
-        1 => {
-            let match_path = matches[0]
-                .strip_prefix("content")
-                .unwrap_or(&matches[0])
-                .with_extension("");  // Remove .md extension
-            let clean_path = match_path.to_string_lossy().replace('\\', "/");
-            if clean_path == "index" {
-                "/".to_string()
-            } else {
-                format!("/{}", clean_path)
-            }
-        }
-        _ => {
-            for dir_path in ["content"].iter() {
-                for entry in WalkDir::new(dir_path).into_iter().filter_map(|e| e.ok()) {
-                    if !entry.file_type().is_file() {
-                        continue;
-                    }
-                    
-                    let file_name = entry.file_name().to_string_lossy();
-                    let file_stem = entry.path()
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy();
-                        
-                    if file_name.ends_with(".md") && file_stem == link_name {
                         let match_path = entry.path()
                             .strip_prefix("content")
-                            .unwrap_or(entry.path())
-                            .with_extension("");
-                        return format!("/{}", match_path.to_string_lossy().replace('\\', "/"));
+                            .unwrap_or(entry.path());
+                        return format!("/static/{}", sanitize_filename(&match_path.to_string_lossy()));
                     }
                 }
             }
-            get_internal_link_path(link_name)
+            resolve_path(image_name, current_path)
         }
     }
 }
@@ -261,11 +206,72 @@ fn get_internal_link_path(path: &str) -> String {
     }
 }
 
+fn find_unique_internal_link(link_name: &str) -> String {
+    let mut matches = Vec::new();
+    
+    for entry in WalkDir::new("content").into_iter().filter_map(|e| e.ok()) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        
+        let file_name = entry.file_name().to_string_lossy();
+        let file_stem = entry.path()
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy();
+            
+        if file_name.ends_with(".md") && file_stem == link_name {
+            matches.push(entry.path().to_path_buf());
+        }
+    }
+    
+    match matches.len() {
+        0 => get_internal_link_path(link_name),
+        1 => {
+            let match_path = matches[0]
+                .strip_prefix("content")
+                .unwrap_or(&matches[0])
+                .with_extension("");
+            let clean_path = match_path.to_string_lossy().replace('\\', "/");
+            if clean_path == "index" {
+                "/".to_string()
+            } else {
+                format!("/{}", clean_path)
+            }
+        }
+        _ => {
+            for dir_path in ["content"].iter() {
+                for entry in WalkDir::new(dir_path).into_iter().filter_map(|e| e.ok()) {
+                    if !entry.file_type().is_file() {
+                        continue;
+                    }
+                    
+                    let file_stem = entry.path()
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy();
+                        
+                    if file_stem.ends_with(".md") && file_stem == link_name {
+                        let match_path = entry.path()
+                            .strip_prefix("content")
+                            .unwrap_or(entry.path())
+                            .with_extension("");
+                        return format!("/{}", match_path.to_string_lossy().replace('\\', "/"));
+                    }
+                }
+            }
+            get_internal_link_path(link_name)
+        }
+    }
+}
 
 fn resolve_path(path: &str, current_path: &Path) -> String {
-    let current_dir = current_path.parent().unwrap().strip_prefix("content").unwrap_or(Path::new(""));
+    let current_dir = current_path.parent()
+        .unwrap()
+        .strip_prefix("content")
+        .unwrap_or(Path::new(""));
     
-    if path.starts_with("./") || path.starts_with("../") {
+    let relative_path = if path.starts_with("./") || path.starts_with("../") {
         let mut full_path = PathBuf::from(current_dir);
         
         let path_segments: Vec<&str> = path.split('/').collect();
@@ -273,8 +279,7 @@ fn resolve_path(path: &str, current_path: &Path) -> String {
         
         let first_segment = *path_iter.next().unwrap_or(&"");
         match first_segment {
-            "." => {
-            },
+            "." => {},
             ".." => {
                 if full_path.parent().is_some() {
                     full_path = full_path.parent().unwrap().to_path_buf();
@@ -288,10 +293,12 @@ fn resolve_path(path: &str, current_path: &Path) -> String {
         for segment in path_iter {
             full_path.push(segment);
         }
-        format!("/static/{}", full_path.to_string_lossy().replace('\\', "/"))
+        full_path.to_string_lossy().to_string()
     } else {
-        format!("/static/{}", path)
-    }
+        path.to_string()
+    };
+    
+    format!("/static/{}", sanitize_filename(&relative_path))
 }
 
 fn process_wiki_parenthetical_links(markdown: &str) -> String {
@@ -309,9 +316,8 @@ fn markdown_to_html(markdown: &str, file_path: &Path) -> String {
     processed_markdown = process_wiki_parenthetical_links(&processed_markdown);
 
     let mut html = String::new();
-    let options =
-        pulldown_cmark::Options::ENABLE_GFM | pulldown_cmark::Options::ENABLE_STRIKETHROUGH;
-    let parser: pulldown_cmark::Parser<'_> = pulldown_cmark::Parser::new_ext(&processed_markdown, options);
+    let options = pulldown_cmark::Options::ENABLE_GFM | pulldown_cmark::Options::ENABLE_STRIKETHROUGH;
+    let parser = pulldown_cmark::Parser::new_ext(&processed_markdown, options);
     pulldown_cmark::html::push_html(&mut html, parser);
     html
 }
@@ -360,7 +366,8 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
             });
         } else if e.file_type().is_file() {
             let rel_path = path.strip_prefix("content")?.to_string_lossy().to_string();
-            let url = format!("/static/{}", rel_path);
+            let sanitized_name = sanitize_filename(&rel_path);
+            let url = format!("/static/{}", sanitized_name);
 
             let metadata = fs::metadata(path)?;
             let modified_time = metadata.modified()?;
@@ -379,7 +386,6 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
     }
     Ok(items)
 }
-
 
 fn is_not_hidden_dir(entry: &walkdir::DirEntry) -> bool {
     if entry.file_type().is_dir() {
@@ -425,7 +431,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     {
         let file_name = entry.file_name().to_string_lossy();
         if file_name.starts_with(".") {
-            continue; // Skip dotfiles
+            continue;
         }
 
         if entry.path().is_file() && entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
@@ -435,7 +441,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // Check for conflicts
     for md_path in &markdown_files {
         let md_stem = md_path.file_stem().unwrap().to_string_lossy();
         let md_parent = md_path.parent().unwrap();
@@ -455,7 +460,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // Process files and directories only after validation
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -463,7 +467,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     {
         if entry.path().is_file() {
             if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
-                continue; // skipping over dotfiles
+                continue;
             }
             if entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
                 let relative_path = entry.path().strip_prefix("content")?;
@@ -507,8 +511,10 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 );
             } else {
                 let relative_path = entry.path().strip_prefix("content")?;
-                let output_path = dist.join("static").join(relative_path);
-                create_directory_safely(&output_path.parent().unwrap())?;
+                let sanitized_name = sanitize_filename(&relative_path.to_string_lossy());
+                let output_path = dist.join("static").join(&sanitized_name);
+                
+                create_directory_safely(output_path.parent().unwrap())?;
                 fs::copy(entry.path(), &output_path)?;
                 println!(
                     "Copying {} -> {}",
@@ -518,7 +524,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             }
         } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
             if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
-                continue; // skipping over dotfiles
+                continue;
             }
             let relative_path = entry.path().strip_prefix("content")?;
             let output_dir = dist.join(relative_path);
