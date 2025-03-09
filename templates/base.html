@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
+    <title>{% block title %}{%endblock title%}</title>
 </head>
 <body>
-    {{ content | safe }}
+    <div id="content" class="grow">{% block content %}{% endblock content %}</div>
 </body>
 </html>
