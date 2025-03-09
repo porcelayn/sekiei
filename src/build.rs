@@ -1,7 +1,8 @@
 use minify_html::minify;
+use regex::Regex;
 use serde::Serialize;
 use serde_yaml::Value as YamlValue;
-use std::{error::Error, fs, path::Path};
+use std::{error::Error, fs, path::{Path, PathBuf}};
 use tera::Tera;
 use walkdir::WalkDir;
 
@@ -66,6 +67,170 @@ fn extract_frontmatter(content: &str) -> Result<(YamlValue, &str), Box<dyn Error
     }
 }
 
+fn process_paths(markdown: &str, current_path: &Path) -> String {
+    let markdown = process_standard_images(markdown, current_path);
+    let markdown = process_alternative_images(&markdown, current_path);
+    let markdown = process_links(&markdown);
+    markdown
+}
+
+fn process_standard_images(markdown: &str, current_path: &Path) -> String {
+    let re = Regex::new(r"!\[(.*?)\]\(([^)]+)\)").unwrap();
+    
+    re.replace_all(markdown, |caps: &regex::Captures| {
+        let alt_text = &caps[1];
+        let path = &caps[2];
+        
+        if !path.starts_with("http://") && !path.starts_with("https://") && !path.starts_with('/') {
+            let static_path = resolve_path(path, current_path);
+            format!("![{}]({})", alt_text, static_path)
+        } else {
+            format!("![{}]({})", alt_text, path)
+        }
+    }).to_string()
+}
+
+fn process_alternative_images(markdown: &str, current_path: &Path) -> String {
+    let re = Regex::new(r"!\[\[([^|\]]+)(?:\|([^\]]*))?\]\]").unwrap();
+    
+    re.replace_all(markdown, |caps: &regex::Captures| {
+        let path = &caps[1];
+        let alt_text = caps.get(2).map_or("", |m| m.as_str());
+        
+        if !path.starts_with("http://") && !path.starts_with("https://") && !path.starts_with('/') {
+            let static_path = find_unique_image(path, current_path);
+            format!("![{}]({})", alt_text, static_path)
+        } else {
+            format!("![{}]({})", alt_text, path)
+        }
+    }).to_string()
+}
+
+
+fn find_unique_image(image_name: &str, current_path: &Path) -> String {
+    if image_name.contains('/') {
+        return resolve_path(image_name, current_path);
+    }
+    
+    let mut matches = Vec::new();
+    
+    for entry in WalkDir::new("content").into_iter().filter_map(|e| e.ok()) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        
+        let file_name = entry.file_name().to_string_lossy();
+        if file_name == image_name {
+            matches.push(entry.path().to_path_buf());
+        }
+    }
+    
+    match matches.len() {
+        0 => {
+            resolve_path(image_name, current_path)
+        }
+        1 => {
+            let match_path = matches[0].strip_prefix("content").unwrap_or(&matches[0]);
+            format!("/static/{}", match_path.to_string_lossy().replace('\\', "/"))
+        }
+        _ => {
+            for dir_path in ["content"].iter() {
+                for entry in WalkDir::new(dir_path).into_iter().filter_map(|e| e.ok()) {
+                    if !entry.file_type().is_file() {
+                        continue;
+                    }
+                    
+                    let file_name = entry.file_name().to_string_lossy();
+                    if file_name == image_name {
+                        let match_path = entry.path().strip_prefix("content").unwrap_or(entry.path());
+                        return format!("/static/{}", match_path.to_string_lossy().replace('\\', "/"));
+                    }
+                }
+            }
+            
+            resolve_path(image_name, current_path)
+        }
+    }
+}
+
+fn process_links(markdown: &str) -> String {
+    let re = Regex::new(r"\[\[([^|\]]+)(?:\|([^\]]*))?\]\]").unwrap();
+    
+    re.replace_all(markdown, |caps: &regex::Captures| {
+        let path = &caps[1];
+        let display_text = caps.get(2).map_or_else(
+            || path.split('/').last().unwrap_or(path),
+            |m| m.as_str()
+        );
+        
+        if !path.starts_with("http://") && !path.starts_with("https://") && !path.starts_with('/') {
+            // This is an internal link to another page, not a static file
+            let link_path = get_internal_link_path(path);
+            format!("[{}]({})", display_text, link_path)
+        } else {
+            format!("[{}]({})", display_text, path)
+        }
+    }).to_string()
+}
+
+fn get_internal_link_path(path: &str) -> String {
+    let clean_path = if path.ends_with(".md") {
+        &path[0..path.len() - 3]
+    } else {
+        path
+    };
+    
+    if clean_path == "index" {
+        "/".to_string()
+    } else {
+        format!("/{}", clean_path)
+    }
+}
+
+
+fn resolve_path(path: &str, current_path: &Path) -> String {
+    let current_dir = current_path.parent().unwrap().strip_prefix("content").unwrap_or(Path::new(""));
+    
+    if path.starts_with("./") || path.starts_with("../") {
+        let mut full_path = PathBuf::from(current_dir);
+        
+        let path_segments: Vec<&str> = path.split('/').collect();
+        let mut path_iter = path_segments.iter();
+        
+        let first_segment = *path_iter.next().unwrap_or(&"");
+        match first_segment {
+            "." => {
+            },
+            ".." => {
+                if full_path.parent().is_some() {
+                    full_path = full_path.parent().unwrap().to_path_buf();
+                }
+            },
+            _ => {
+                full_path.push(first_segment);
+            }
+        }
+        
+        for segment in path_iter {
+            full_path.push(segment);
+        }
+        format!("/static/{}", full_path.to_string_lossy().replace('\\', "/"))
+    } else {
+        format!("/static/{}", path)
+    }
+}
+
+fn markdown_to_html(markdown: &str, file_path: &Path) -> String {
+    let processed_markdown = process_paths(markdown, file_path);
+    
+    let mut html = String::new();
+    let options =
+        pulldown_cmark::Options::ENABLE_GFM | pulldown_cmark::Options::ENABLE_STRIKETHROUGH;
+    let parser: pulldown_cmark::Parser<'_> = pulldown_cmark::Parser::new_ext(&processed_markdown, options);
+    pulldown_cmark::html::push_html(&mut html, parser);
+    html
+}
+
 #[derive(Serialize)]
 struct ListingItem {
     name: String,
@@ -89,7 +254,11 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
             .to_string_lossy()
             .to_string();
         if e.file_type().is_file() && name.ends_with(".md") {
-            let rel_path = path.with_extension("").strip_prefix("content")?.to_string_lossy().to_string();
+            let rel_path = path
+                .with_extension("")
+                .strip_prefix("content")?
+                .to_string_lossy()
+                .to_string();
             let url = format!("/{}", rel_path);
 
             let content = fs::read_to_string(path)?;
@@ -126,15 +295,6 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
     Ok(items)
 }
 
-fn markdown_to_html(markdown: &str) -> String {
-    let mut html = String::new();
-    let options =
-        pulldown_cmark::Options::ENABLE_GFM | pulldown_cmark::Options::ENABLE_STRIKETHROUGH;
-    let parser: pulldown_cmark::Parser<'_> = pulldown_cmark::Parser::new_ext(markdown, options);
-    pulldown_cmark::html::push_html(&mut html, parser);
-    html
-}
-
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
     clear_directory_safely(dist)?;
@@ -160,55 +320,72 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     println!("Loading Markdown files from content/");
 
     for entry in WalkDir::new("content").into_iter().filter_map(|e| e.ok()) {
-        if entry.path().is_file() && entry.path().extension().and_then(|s| s.to_str()) == Some("md")
-        {
-            let relative_path = entry.path().strip_prefix("content")?;
-            let output_path = if relative_path.to_string_lossy() == "index.md" {
-                dist.join("index.html")
-            } else {
-                let output_dir = dist.join(relative_path.with_extension(""));
-                create_directory_safely(&output_dir)?;
-                output_dir.join("index.html")
-            };
+        if entry.path().is_file() {
+            if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
+                continue; // skipping over dotfiles
+            }
+            if entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
+                let relative_path = entry.path().strip_prefix("content")?;
+                let output_path = if relative_path.to_string_lossy() == "index.md" {
+                    dist.join("index.html")
+                } else {
+                    let output_dir = dist.join(relative_path.with_extension(""));
+                    create_directory_safely(&output_dir)?;
+                    output_dir.join("index.html")
+                };
 
-            let content = fs::read_to_string(entry.path())?;
-            let (frontmatter, md_content) = extract_frontmatter(&content)?;
-            let html_content = markdown_to_html(md_content);
+                let content = fs::read_to_string(entry.path())?;
+                let (frontmatter, md_content) = extract_frontmatter(&content)?;
+                let html_content = markdown_to_html(md_content, entry.path());
 
-            let mut context = tera::Context::new();
+                let mut context = tera::Context::new();
 
-            let title = frontmatter["title"].as_str().unwrap().to_string();
-            context.insert("title", &title);
-            context.insert("markdown", &html_content);
-            context.insert("frontmatter", &frontmatter);
+                let title = frontmatter["title"].as_str().unwrap().to_string();
+                context.insert("title", &title);
+                context.insert("markdown", &html_content);
+                context.insert("frontmatter", &frontmatter);
 
-            let rendered = match tera.render("content.html", &context) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!(
-                        "Error rendering template for {}: {}",
-                        entry.path().display(),
-                        e
-                    );
+                let rendered = match tera.render("content.html", &context) {
+                    Ok(content) => content,
+                    Err(e) => {
+                        eprintln!(
+                            "Error rendering template for {}: {}",
+                            entry.path().display(),
+                            e
+                        );
+                        continue;
+                    }
+                };
+
+                let minified = minify(rendered.as_bytes(), &minify_cfg);
+
+                if let Err(e) =
+                    safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())
+                {
+                    eprintln!("Error writing to {}: {}", output_path.display(), e);
                     continue;
                 }
-            };
 
-            let minified = minify(rendered.as_bytes(), &minify_cfg);
-
-            if let Err(e) =
-                safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())
-            {
-                eprintln!("Error writing to {}: {}", output_path.display(), e);
-                continue;
+                println!(
+                    "Converting {} -> {}",
+                    entry.path().display(),
+                    output_path.display()
+                );
+            } else {
+                let relative_path = entry.path().strip_prefix("content")?;
+                let output_path = dist.join("static").join(relative_path);
+                create_directory_safely(&output_path.parent().unwrap())?;
+                fs::copy(entry.path(), &output_path)?;
+                println!(
+                    "Copying {} -> {}",
+                    entry.path().display(),
+                    output_path.display()
+                );
             }
-
-            println!(
-                "Converting {} -> {}",
-                entry.path().display(),
-                output_path.display()
-            );
         } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
+            if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
+                continue; // skipping over dotfiles
+            }
             let relative_path = entry.path().strip_prefix("content")?;
             let output_dir = dist.join(relative_path);
             create_directory_safely(&output_dir)?;
@@ -232,9 +409,10 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
             let minified = minify(rendered.as_bytes(), &minify_cfg);
 
-            if let Err(e) =
-                safely_write_file(&output_dir.join("index.html"), String::from_utf8(minified).unwrap().as_str())
-            {
+            if let Err(e) = safely_write_file(
+                &output_dir.join("index.html"),
+                String::from_utf8(minified).unwrap().as_str(),
+            ) {
                 eprintln!("Error writing to {}: {}", output_dir.display(), e);
                 continue;
             }

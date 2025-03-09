@@ -1867,6 +1867,7 @@ dependencies = [
  "clap",
  "minify-html",
  "pulldown-cmark",
+ "regex",
  "serde",
  "serde_yaml",
  "syntect",
