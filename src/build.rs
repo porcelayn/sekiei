@@ -305,21 +305,126 @@ fn is_not_hidden_dir(entry: &walkdir::DirEntry) -> bool {
     }
 }
 
+
+fn render_and_write(
+    tera: &Tera,
+    template: &str,
+    context: &tera::Context,
+    output_path: &Path,
+    minify_cfg: &minify_html::Cfg,
+) -> Result<(), Box<dyn Error>> {
+    let rendered = tera.render(template, context)?;
+    let minified = minify(rendered.as_bytes(), minify_cfg);
+    safely_write_file(output_path, String::from_utf8(minified)?.as_str())?;
+    Ok(())
+}
+
+fn process_markdown_file(
+    entry: &walkdir::DirEntry,
+    all_entries: &[walkdir::DirEntry],
+    dist: &Path,
+    tera: &Tera,
+    minify_cfg: &minify_html::Cfg,
+) -> Result<(), Box<dyn Error>> {
+    let relative_path = entry.path().strip_prefix("content")?;
+    let file_stem = relative_path.file_stem().unwrap_or_default().to_string_lossy();
+    let parent_dir = entry.path().parent().unwrap_or(Path::new("content"));
+    
+    let has_matching_dir = all_entries.iter().any(|e| {
+        e.path().is_dir() && 
+        e.path().parent().unwrap() == parent_dir && 
+        e.path().file_name().unwrap().to_string_lossy() == file_stem
+    });
+
+    let output_dir = if relative_path.to_string_lossy() == "index.md" {
+        dist.to_path_buf()
+    } else if has_matching_dir {
+        dist.join(file_stem.as_ref())
+    } else {
+        dist.join(relative_path.with_extension(""))
+    };
+    
+    create_directory_safely(&output_dir)?;
+    let output_path = output_dir.join("index.html");
+
+    let content = fs::read_to_string(entry.path())?;
+    let (frontmatter, md_content) = extract_frontmatter(&content)?;
+    let html_content = markdown_to_html(md_content, entry.path());
+
+    let mut context = tera::Context::new();
+    let title = frontmatter["title"].as_str().unwrap().to_string();
+    context.insert("title", &title);
+    context.insert("markdown", &html_content);
+    context.insert("frontmatter", &frontmatter);
+
+    render_and_write(tera, "content.html", &context, &output_path, minify_cfg)?;
+    
+    println!("Converting {} -> {}", entry.path().display(), output_path.display());
+    Ok(())
+}
+
+fn process_static_file(
+    entry: &walkdir::DirEntry,
+    dist: &Path,
+) -> Result<(), Box<dyn Error>> {
+    let relative_path = entry.path().strip_prefix("content")?;
+    let output_path = dist.join("static").join(relative_path);
+    create_directory_safely(&output_path.parent().unwrap())?;
+    fs::copy(entry.path(), &output_path)?;
+    println!("Copying {} -> {}", entry.path().display(), output_path.display());
+    Ok(())
+}
+
+fn process_directory(
+    entry: &walkdir::DirEntry,
+    all_entries: &[walkdir::DirEntry],
+    dist: &Path,
+    tera: &Tera,
+    minify_cfg: &minify_html::Cfg,
+) -> Result<(), Box<dyn Error>> {
+    let relative_path = entry.path().strip_prefix("content")?;
+    let dir_name = entry.path().file_name().unwrap().to_string_lossy();
+    let parent_dir = entry.path().parent().unwrap_or(Path::new("content"));
+    
+    let has_matching_file = all_entries.iter().any(|e| {
+        e.path().is_file() &&
+        e.path().parent().unwrap() == parent_dir &&
+        e.path().file_stem().unwrap().to_string_lossy() == dir_name &&
+        e.path().extension().and_then(|s| s.to_str()) == Some("md")
+    });
+
+    let output_dir = if has_matching_file {
+        dist.join(format!("{}-folder", relative_path.to_string_lossy()))
+    } else {
+        dist.join(relative_path)
+    };
+    
+    create_directory_safely(&output_dir)?;
+    let items = create_listing(entry.path())?;
+
+    let mut context = tera::Context::new();
+    context.insert("items", &items);
+    context.insert("dir_path", &relative_path);
+
+    let output_path = output_dir.join("index.html");
+    render_and_write(tera, "listing.html", &context, &output_path, minify_cfg)?;
+    
+    println!("Creating listing for {} -> {}", entry.path().display(), output_dir.display());
+    Ok(())
+}
+
+// Main build function
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
     clear_directory_safely(dist)?;
-
     create_directory_safely(dist)?;
     create_directory_safely(&dist.join("static"))?;
 
     println!("Loading Templates defined in templates/");
-    let tera = match Tera::new("templates/**/*") {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("Error loading templates: {}", e);
-            return Err(Box::new(e));
-        }
-    };
+    let tera = Tera::new("templates/**/*").map_err(|e| {
+        eprintln!("Error loading templates: {}", e);
+        Box::new(e) as Box<dyn Error>
+    })?;
 
     let minify_cfg = minify_html::Cfg {
         minify_js: true,
@@ -328,100 +433,28 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     };
 
     println!("Loading Markdown files from content/");
-
-    for entry in WalkDir::new("content")
+    let all_entries: Vec<_> = WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
         .filter_map(|e| e.ok())
-    {
+        .collect();
+
+    for entry in all_entries.iter() {
         if entry.path().is_file() {
             if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
                 continue; // skipping over dotfiles
             }
+            
             if entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
-                let relative_path = entry.path().strip_prefix("content")?;
-                let output_path = if relative_path.to_string_lossy() == "index.md" {
-                    dist.join("index.html")
-                } else {
-                    let output_dir = dist.join(relative_path.with_extension(""));
-                    create_directory_safely(&output_dir)?;
-                    output_dir.join("index.html")
-                };
-
-                let content = fs::read_to_string(entry.path())?;
-                let (frontmatter, md_content) = extract_frontmatter(&content)?;
-                let html_content = markdown_to_html(md_content, entry.path());
-
-                let mut context = tera::Context::new();
-                let title = frontmatter["title"].as_str().unwrap().to_string();
-                context.insert("title", &title);
-                context.insert("markdown", &html_content);
-                context.insert("frontmatter", &frontmatter);
-
-                let rendered = match tera.render("content.html", &context) {
-                    Ok(content) => content,
-                    Err(e) => {
-                        eprintln!(
-                            "Error rendering template for {}: {}",
-                            entry.path().display(),
-                            e
-                        );
-                        continue;
-                    }
-                };
-
-                let minified = minify(rendered.as_bytes(), &minify_cfg);
-                safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())?;
-
-                println!(
-                    "Converting {} -> {}",
-                    entry.path().display(),
-                    output_path.display()
-                );
+                process_markdown_file(entry, &all_entries, dist, &tera, &minify_cfg)?;
             } else {
-                let relative_path = entry.path().strip_prefix("content")?;
-                let output_path = dist.join("static").join(relative_path);
-                create_directory_safely(&output_path.parent().unwrap())?;
-                fs::copy(entry.path(), &output_path)?;
-                println!(
-                    "Copying {} -> {}",
-                    entry.path().display(),
-                    output_path.display()
-                );
+                process_static_file(entry, dist)?;
             }
-        } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
+        } else if entry.path().display().to_string() != "content" {
             if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
                 continue; // skipping over dotfiles
             }
-            let relative_path = entry.path().strip_prefix("content")?;
-            let output_dir = dist.join(relative_path);
-            create_directory_safely(&output_dir)?;
-            let items = create_listing(entry.path())?;
-
-            let mut context = tera::Context::new();
-            context.insert("items", &items);
-            context.insert("dir_path", &relative_path);
-
-            let rendered = match tera.render("listing.html", &context) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!(
-                        "Error rendering template for {}: {}",
-                        entry.path().display(),
-                        e
-                    );
-                    continue;
-                }
-            };
-
-            let minified = minify(rendered.as_bytes(), &minify_cfg);
-            safely_write_file(&output_dir.join("index.html"), String::from_utf8(minified).unwrap().as_str())?;
-
-            println!(
-                "Creating listing for {} -> {}",
-                entry.path().display(),
-                output_dir.display()
-            );
+            process_directory(entry, &all_entries, dist, &tera, &minify_cfg)?;
         }
     }
 
