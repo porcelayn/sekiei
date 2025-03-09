@@ -63,8 +63,9 @@ fn extract_frontmatter(content: &str) -> Result<(YamlValue, &str), Box<dyn Error
 }
 
 fn sanitize_filename(path: &str) -> String {
+    let p = path.replace("/", "-").replace("\\", "-");
     let mut sanitized = String::new();
-    for c in path.chars() {
+    for c in p.chars() {
         if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' {
             sanitized.push(c);
         } else {
