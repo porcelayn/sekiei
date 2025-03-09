@@ -164,7 +164,6 @@ fn process_links(markdown: &str) -> String {
         );
         
         if !path.starts_with("http://") && !path.starts_with("https://") && !path.starts_with('/') {
-            // This is an internal link to another page, not a static file
             let link_path = get_internal_link_path(path);
             format!("[{}]({})", display_text, link_path)
         } else {
@@ -295,6 +294,17 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
     Ok(items)
 }
 
+
+fn is_not_hidden_dir(entry: &walkdir::DirEntry) -> bool {
+    if entry.file_type().is_dir() {
+        entry.file_name()
+            .to_str()
+            .map_or(false, |name| !name.starts_with('.'))
+    } else {
+        true
+    }
+}
+
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
     clear_directory_safely(dist)?;
@@ -319,7 +329,11 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     println!("Loading Markdown files from content/");
 
-    for entry in WalkDir::new("content").into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new("content")
+        .into_iter()
+        .filter_entry(is_not_hidden_dir)
+        .filter_map(|e| e.ok())
+    {
         if entry.path().is_file() {
             if entry.path().file_name().expect("Could not read file").to_string_lossy().starts_with(".") {
                 continue; // skipping over dotfiles
@@ -339,7 +353,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 let html_content = markdown_to_html(md_content, entry.path());
 
                 let mut context = tera::Context::new();
-
                 let title = frontmatter["title"].as_str().unwrap().to_string();
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
@@ -358,13 +371,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 };
 
                 let minified = minify(rendered.as_bytes(), &minify_cfg);
-
-                if let Err(e) =
-                    safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())
-                {
-                    eprintln!("Error writing to {}: {}", output_path.display(), e);
-                    continue;
-                }
+                safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())?;
 
                 println!(
                     "Converting {} -> {}",
@@ -408,14 +415,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             };
 
             let minified = minify(rendered.as_bytes(), &minify_cfg);
-
-            if let Err(e) = safely_write_file(
-                &output_dir.join("index.html"),
-                String::from_utf8(minified).unwrap().as_str(),
-            ) {
-                eprintln!("Error writing to {}: {}", output_dir.display(), e);
-                continue;
-            }
+            safely_write_file(&output_dir.join("index.html"), String::from_utf8(minified).unwrap().as_str())?;
 
             println!(
                 "Creating listing for {} -> {}",
