@@ -89,11 +89,8 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
             .to_string_lossy()
             .to_string();
         if e.file_type().is_file() && name.ends_with(".md") {
-            let url = format!(
-                "/{}/{}",
-                dir.to_string_lossy().to_string(),
-                path.strip_prefix(dir)?.to_string_lossy()
-            );
+            let rel_path = path.with_extension("").strip_prefix("content")?.to_string_lossy().to_string();
+            let url = format!("/{}", rel_path);
 
             let content = fs::read_to_string(path)?;
             let (frontmatter, _) = extract_frontmatter(&content)?;
@@ -108,13 +105,9 @@ fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
                 description: frontmatter["description"].as_str().map(|s| s.to_string()),
             });
         } else if e.file_type().is_file() {
-            let url = format!(
-                "/static/{}/{}",
-                dir.to_string_lossy().to_string(),
-                path.strip_prefix(dir)?.to_string_lossy()
-            );
+            let rel_path = path.strip_prefix("content")?.to_string_lossy().to_string();
+            let url = format!("/static/{}", rel_path);
 
-            // for static files, just get the last modified date
             let metadata = fs::metadata(path)?;
             let modified_time = metadata.modified()?;
             let date = modified_time
