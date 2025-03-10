@@ -31,6 +31,7 @@ pub fn create_listing(dir: &Path) -> Result<Vec<ListingItem>, Box<dyn Error>> {
                 date: frontmatter["date"].as_str().unwrap_or_default().to_string(),
                 description: frontmatter["description"].as_str().map(|s| s.to_string()),
             });
+
         } else if entry.file_type().is_file() {
             let rel_path = path.strip_prefix("content")?.to_string_lossy().to_string();
             let sanitized_name = crate::utils::sanitize_filename(&rel_path);

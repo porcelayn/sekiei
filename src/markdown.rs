@@ -1,9 +1,9 @@
+use crate::paths::{process_paths, process_wiki_parenthetical_links};
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd, html};
+use serde::Serialize;
 use serde_yaml::Value as YamlValue;
 use std::error::Error;
 use std::path::Path;
-use crate::paths::{process_paths, process_wiki_parenthetical_links};
-use pulldown_cmark::{Event, Tag, TagEnd, Parser, Options, html};
-use serde::Serialize;
 
 pub fn extract_frontmatter(content: &str) -> Result<(YamlValue, &str), Box<dyn Error>> {
     let trimmed_content = content.trim_start();
@@ -46,15 +46,23 @@ pub fn markdown_to_html(markdown: &str, file_path: &Path) -> (String, Vec<TOCEnt
 
     let mut html = String::new();
     let mut toc = Vec::new();
-    let options = Options::ENABLE_GFM | Options::ENABLE_STRIKETHROUGH;
+    let options = Options::ENABLE_GFM
+        | Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_MATH
+        | Options::ENABLE_FOOTNOTES
+        | Options::ENABLE_TABLES
+        | Options::ENABLE_TASKLISTS
+        | Options::ENABLE_DEFINITION_LIST
+        | Options::ENABLE_SMART_PUNCTUATION;
+
     let parser = Parser::new_ext(&processed_markdown, options);
-    
+
     let mut events = Vec::new();
     let mut current_heading: Option<(u32, Vec<Event>)> = None;
-    
+
     for event in parser {
         match event {
-            Event::Start(Tag::Heading{level,..}) => {
+            Event::Start(Tag::Heading { level, .. }) => {
                 current_heading = Some((level as u32, Vec::new()));
             }
             Event::End(TagEnd::Heading(_)) => {
@@ -70,25 +78,22 @@ pub fn markdown_to_html(markdown: &str, file_path: &Path) -> (String, Vec<TOCEnt
                         .to_lowercase()
                         .replace(' ', "-")
                         .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
-                    
                     toc.push(TOCEntry {
                         level,
                         id: slug.clone(),
                         title: text_content.clone(),
                     });
-                    
+
                     let mut inner_html = String::new();
                     html::push_html(&mut inner_html, inner_events.into_iter());
-                    let heading_html = format!(
-                        "<h{} id=\"{}\">{}</h{}>",
-                        level, slug, inner_html, level
-                    );
+                    let heading_html =
+                        format!("<h{} id=\"{}\">{}</h{}>", level, slug, inner_html, level);
                     events.push(Event::Html(heading_html.into()));
                 }
             }
             _ => {
                 if let Some((_, ref mut inner_events)) = current_heading {
-                    inner_events.push(event); 
+                    inner_events.push(event);
                 } else {
                     events.push(event);
                 }
