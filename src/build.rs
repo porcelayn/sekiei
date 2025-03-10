@@ -23,7 +23,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     })?;
 
     let minify_cfg = minify_html::Cfg {
-        minify_js: true,
+        minify_js: false,
         minify_css: true,
         ..Default::default()
     };
