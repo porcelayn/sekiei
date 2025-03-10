@@ -74,13 +74,14 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
                 let content = fs::read_to_string(entry.path())?;
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
-                let html_content = markdown_to_html(md_content, entry.path());
-
+                let (html_content, toc) = markdown_to_html(md_content, entry.path());
+                
                 let mut context = tera::Context::new();
                 let title = frontmatter["title"].as_str().unwrap().to_string();
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
+                context.insert("table_of_contents", &toc);
 
                 let rendered = tera.render("content.html", &context).map_err(|e| {
                     eprintln!("Error rendering template for {}: {}", entry.path().display(), e);
