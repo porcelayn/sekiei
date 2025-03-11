@@ -1,3 +1,5 @@
 body {
     padding: 10px;
+    background: var(--background-color);
+    color: var(--text-color);
 }

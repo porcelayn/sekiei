@@ -6,9 +6,13 @@
     <title>{% block title %}{%endblock title%}</title>
     <link rel="stylesheet" href="/static/theme.css">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/themer.js" defer></script>
     {% block head %}{% endblock head %}
 </head>
 <body>
+    <button id="toggle-theme">toggle theme</button>
     <div id="content" class="grow">{% block content %}{% endblock content %}</div>
+    <script>
+    </script>
 </body>
 </html>

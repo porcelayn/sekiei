@@ -44,141 +44,543 @@ pub struct CustomTheme {
 }
 
 pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<String, String>)> {
-    let mut presets = HashMap::new();
+    // Catppuccin Light
+    let catppuccin_light = vec![
+        ("background_color", "#ffffff"),
+        ("text_color", "#4c4f69"),
+        ("link_color", "#1e66f5"),
+        ("heading_color", "#8839ef"),
+        ("code_background", "#e6e9ef"),
+        ("code_text", "#4c4f69"),
+        ("border_color", "#ccd0da"),
+        ("accent_color", "#1e66f5"),
+        ("blockquote_color", "#6c7086"),
+        ("secondary_background", "#eff1f5"),
+        ("secondary_accent", "#dd7878"),
+        ("highlight_add", "rgba(87, 160, 112, 0.3)"),
+        ("highlight_del", "rgba(210, 77, 87, 0.3)"),
+        ("highlight", "rgba(30, 102, 245, 0.3)"),
+        ("type", "#1e66f5"),
+        ("constant", "#fe640b"),
+        ("string", "#40a02b"),
+        ("comment", "#8b949e"),
+        ("keyword", "#8839ef"),
+        ("function", "#d20f39"),
+        ("variable", "#7287fd"),
+        ("punctuation", "#6c7086"),
+        ("markup_heading", "#d20f39"),
+        ("diff_plus", "#d4f1d7"),
+        ("diff_minus", "#f8d3d5"),
+        ("attribute", "#179299"),
+        ("constructor", "#df8e1d"),
+        ("tag", "#ea76cb"),
+        ("escape", "#d20f39"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    // Catppuccin Preset
-    let mut catppuccin_light = HashMap::new();
-    catppuccin_light.insert("background_color".to_string(), "#ffffff".to_string());
-    catppuccin_light.insert("text_color".to_string(), "#4c4f69".to_string());
-    catppuccin_light.insert("link_color".to_string(), "#1e66f5".to_string());
-    catppuccin_light.insert("heading_color".to_string(), "#8839ef".to_string());
-    catppuccin_light.insert("code_background".to_string(), "#e6e9ef".to_string());
-    catppuccin_light.insert("code_text".to_string(), "#4c4f69".to_string());
-    catppuccin_light.insert("border_color".to_string(), "#ccd0da".to_string());
-    catppuccin_light.insert("accent_color".to_string(), "#1e66f5".to_string()); // Same as link_color
-    catppuccin_light.insert("blockquote_color".to_string(), "#6c7086".to_string());
-    catppuccin_light.insert("secondary_background".to_string(), "#eff1f5".to_string());
-    catppuccin_light.insert("secondary_accent".to_string(), "#dd7878".to_string());
-    // Syntax highlighting colors
-    catppuccin_light.insert("highlight_add".to_string(), "rgba(87, 160, 112, 0.3)".to_string());
-    catppuccin_light.insert("highlight_del".to_string(), "rgba(210, 77, 87, 0.3)".to_string());
-    catppuccin_light.insert("highlight".to_string(), "rgba(30, 102, 245, 0.3)".to_string());
-    catppuccin_light.insert("type".to_string(), "#1e66f5".to_string());
-    catppuccin_light.insert("constant".to_string(), "#fe640b".to_string());
-    catppuccin_light.insert("string".to_string(), "#40a02b".to_string());
-    catppuccin_light.insert("comment".to_string(), "#8b949e".to_string());
-    catppuccin_light.insert("keyword".to_string(), "#8839ef".to_string());
-    catppuccin_light.insert("function".to_string(), "#d20f39".to_string());
-    catppuccin_light.insert("variable".to_string(), "#7287fd".to_string());
-    catppuccin_light.insert("punctuation".to_string(), "#6c7086".to_string());
-    catppuccin_light.insert("markup_heading".to_string(), "#d20f39".to_string());
-    catppuccin_light.insert("diff_plus".to_string(), "#d4f1d7".to_string());
-    catppuccin_light.insert("diff_minus".to_string(), "#f8d3d5".to_string());
-    catppuccin_light.insert("attribute".to_string(), "#179299".to_string());
-    catppuccin_light.insert("constructor".to_string(), "#df8e1d".to_string());
-    catppuccin_light.insert("tag".to_string(), "#ea76cb".to_string());
-    catppuccin_light.insert("escape".to_string(), "#d20f39".to_string());
+    // Catppuccin Dark
+    let catppuccin_dark = vec![
+        ("background_color", "#1e1e2e"),
+        ("text_color", "#cdd6f4"),
+        ("link_color", "#89b4fa"),
+        ("heading_color", "#b4befe"),
+        ("code_background", "#313244"),
+        ("code_text", "#cdd6f4"),
+        ("border_color", "#585b70"),
+        ("accent_color", "#89b4fa"),
+        ("blockquote_color", "#9399b2"),
+        ("secondary_background", "#24273a"),
+        ("secondary_accent", "#f38ba8"),
+        ("highlight_add", "rgba(166, 227, 161, 0.3)"),
+        ("highlight_del", "rgba(243, 139, 168, 0.3)"),
+        ("highlight", "rgba(137, 180, 250, 0.3)"),
+        ("type", "#89b4fa"),
+        ("constant", "#fab387"),
+        ("string", "#a6e3a1"),
+        ("comment", "#585b70"),
+        ("keyword", "#cba6f7"),
+        ("function", "#f38ba8"),
+        ("variable", "#b4befe"),
+        ("punctuation", "#9399b2"),
+        ("markup_heading", "#f38ba8"),
+        ("diff_plus", "rgba(166, 227, 161, 0.3)"),
+        ("diff_minus", "rgba(243, 139, 168, 0.3)"),
+        ("attribute", "#94e2d5"),
+        ("constructor", "#f9e2af"),
+        ("tag", "#f5c2e7"),
+        ("escape", "#f38ba8"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    let mut catppuccin_dark = HashMap::new();
-    catppuccin_dark.insert("background_color".to_string(), "#1e1e2e".to_string());
-    catppuccin_dark.insert("text_color".to_string(), "#cdd6f4".to_string());
-    catppuccin_dark.insert("link_color".to_string(), "#89b4fa".to_string());
-    catppuccin_dark.insert("heading_color".to_string(), "#b4befe".to_string());
-    catppuccin_dark.insert("code_background".to_string(), "#313244".to_string());
-    catppuccin_dark.insert("code_text".to_string(), "#cdd6f4".to_string());
-    catppuccin_dark.insert("border_color".to_string(), "#585b70".to_string());
-    catppuccin_dark.insert("accent_color".to_string(), "#89b4fa".to_string()); // Same as link_color
-    catppuccin_dark.insert("blockquote_color".to_string(), "#9399b2".to_string());
-    catppuccin_dark.insert("secondary_background".to_string(), "#24273a".to_string());
-    catppuccin_dark.insert("secondary_accent".to_string(), "#f38ba8".to_string());
-    // Syntax highlighting colors
-    catppuccin_dark.insert("highlight_add".to_string(), "rgba(166, 227, 161, 0.3)".to_string());
-    catppuccin_dark.insert("highlight_del".to_string(), "rgba(243, 139, 168, 0.3)".to_string());
-    catppuccin_dark.insert("highlight".to_string(), "rgba(137, 180, 250, 0.3)".to_string());
-    catppuccin_dark.insert("type".to_string(), "#89b4fa".to_string());
-    catppuccin_dark.insert("constant".to_string(), "#fab387".to_string());
-    catppuccin_dark.insert("string".to_string(), "#a6e3a1".to_string());
-    catppuccin_dark.insert("comment".to_string(), "#585b70".to_string());
-    catppuccin_dark.insert("keyword".to_string(), "#cba6f7".to_string());
-    catppuccin_dark.insert("function".to_string(), "#f38ba8".to_string());
-    catppuccin_dark.insert("variable".to_string(), "#b4befe".to_string());
-    catppuccin_dark.insert("punctuation".to_string(), "#9399b2".to_string());
-    catppuccin_dark.insert("markup_heading".to_string(), "#f38ba8".to_string());
-    catppuccin_dark.insert("diff_plus".to_string(), "rgba(166, 227, 161, 0.3)".to_string());
-    catppuccin_dark.insert("diff_minus".to_string(), "rgba(243, 139, 168, 0.3)".to_string());
-    catppuccin_dark.insert("attribute".to_string(), "#94e2d5".to_string());
-    catppuccin_dark.insert("constructor".to_string(), "#f9e2af".to_string());
-    catppuccin_dark.insert("tag".to_string(), "#f5c2e7".to_string());
-    catppuccin_dark.insert("escape".to_string(), "#f38ba8".to_string());
+    // Gruvbox Light
+    let gruvbox_light = vec![
+        ("background_color", "#fbf1c7"),
+        ("text_color", "#3c3836"),
+        ("link_color", "#458588"),
+        ("heading_color", "#b57614"),
+        ("code_background", "#ebdbb2"),
+        ("code_text", "#3c3836"),
+        ("border_color", "#a89984"),
+        ("accent_color", "#458588"),
+        ("blockquote_color", "#7c6f64"),
+        ("secondary_background", "#f2e5bc"),
+        ("secondary_accent", "#d65d0e"),
+        ("highlight_add", "rgba(104, 135, 56, 0.3)"),
+        ("highlight_del", "rgba(204, 36, 29, 0.3)"),
+        ("highlight", "rgba(69, 133, 136, 0.3)"),
+        ("type", "#458588"),
+        ("constant", "#d65d0e"),
+        ("string", "#79740e"),
+        ("comment", "#928374"),
+        ("keyword", "#b57614"),
+        ("function", "#9d0006"),
+        ("variable", "#427b58"),
+        ("punctuation", "#7c6f64"),
+        ("markup_heading", "#9d0006"),
+        ("diff_plus", "#e7f0d2"),
+        ("diff_minus", "#f7d9d7"),
+        ("attribute", "#689d6a"),
+        ("constructor", "#b57614"),
+        ("tag", "#af3a03"),
+        ("escape", "#9d0006"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    presets.insert("catppuccin".to_string(), (catppuccin_light, catppuccin_dark));
+    // Gruvbox Dark
+    let gruvbox_dark = vec![
+        ("background_color", "#282828"),
+        ("text_color", "#ebdbb2"),
+        ("link_color", "#83a598"),
+        ("heading_color", "#fabd2f"),
+        ("code_background", "#3c3836"),
+        ("code_text", "#ebdbb2"),
+        ("border_color", "#665c54"),
+        ("accent_color", "#83a598"),
+        ("blockquote_color", "#928374"),
+        ("secondary_background", "#32302f"),
+        ("secondary_accent", "#fe8019"),
+        ("highlight_add", "rgba(166, 192, 102, 0.3)"),
+        ("highlight_del", "rgba(251, 73, 52, 0.3)"),
+        ("highlight", "rgba(131, 165, 152, 0.3)"),
+        ("type", "#83a598"),
+        ("constant", "#fe8019"),
+        ("string", "#b8bb26"),
+        ("comment", "#928374"),
+        ("keyword", "#fabd2f"),
+        ("function", "#fb4934"),
+        ("variable", "#8ec07c"),
+        ("punctuation", "#a89984"),
+        ("markup_heading", "#fb4934"),
+        ("diff_plus", "rgba(166, 192, 102, 0.3)"),
+        ("diff_minus", "rgba(251, 73, 52, 0.3)"),
+        ("attribute", "#b8bb26"),
+        ("constructor", "#fabd2f"),
+        ("tag", "#d3869b"),
+        ("escape", "#fb4934"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    // Gruvbox Preset
-    let mut gruvbox_light = HashMap::new();
-    gruvbox_light.insert("background_color".to_string(), "#fbf1c7".to_string());
-    gruvbox_light.insert("text_color".to_string(), "#3c3836".to_string());
-    gruvbox_light.insert("link_color".to_string(), "#458588".to_string());
-    gruvbox_light.insert("heading_color".to_string(), "#b57614".to_string());
-    gruvbox_light.insert("code_background".to_string(), "#ebdbb2".to_string());
-    gruvbox_light.insert("code_text".to_string(), "#3c3836".to_string());
-    gruvbox_light.insert("border_color".to_string(), "#a89984".to_string());
-    gruvbox_light.insert("accent_color".to_string(), "#458588".to_string()); // Same as link_color
-    gruvbox_light.insert("blockquote_color".to_string(), "#7c6f64".to_string());
-    gruvbox_light.insert("secondary_background".to_string(), "#f2e5bc".to_string());
-    gruvbox_light.insert("secondary_accent".to_string(), "#d65d0e".to_string());
-    // Syntax highlighting colors
-    gruvbox_light.insert("highlight_add".to_string(), "rgba(104, 135, 56, 0.3)".to_string());
-    gruvbox_light.insert("highlight_del".to_string(), "rgba(204, 36, 29, 0.3)".to_string());
-    gruvbox_light.insert("highlight".to_string(), "rgba(69, 133, 136, 0.3)".to_string());
-    gruvbox_light.insert("type".to_string(), "#458588".to_string());
-    gruvbox_light.insert("constant".to_string(), "#d65d0e".to_string());
-    gruvbox_light.insert("string".to_string(), "#79740e".to_string());
-    gruvbox_light.insert("comment".to_string(), "#928374".to_string());
-    gruvbox_light.insert("keyword".to_string(), "#b57614".to_string());
-    gruvbox_light.insert("function".to_string(), "#9d0006".to_string());
-    gruvbox_light.insert("variable".to_string(), "#427b58".to_string());
-    gruvbox_light.insert("punctuation".to_string(), "#7c6f64".to_string());
-    gruvbox_light.insert("markup_heading".to_string(), "#9d0006".to_string());
-    gruvbox_light.insert("diff_plus".to_string(), "#e7f0d2".to_string());
-    gruvbox_light.insert("diff_minus".to_string(), "#f7d9d7".to_string());
-    gruvbox_light.insert("attribute".to_string(), "#689d6a".to_string());
-    gruvbox_light.insert("constructor".to_string(), "#b57614".to_string());
-    gruvbox_light.insert("tag".to_string(), "#af3a03".to_string());
-    gruvbox_light.insert("escape".to_string(), "#9d0006".to_string());
+    // Nord Light
+    let nord_light = vec![
+        ("background_color", "#eceff4"),
+        ("text_color", "#2e3440"),
+        ("link_color", "#5e81ac"),
+        ("heading_color", "#4c566a"),
+        ("code_background", "#e5e9f0"),
+        ("code_text", "#2e3440"),
+        ("border_color", "#d8dee9"),
+        ("accent_color", "#5e81ac"),
+        ("blockquote_color", "#4c566a"),
+        ("secondary_background", "#f0f4f8"),
+        ("secondary_accent", "#81a1c1"),
+        ("highlight_add", "rgba(163, 190, 140, 0.3)"),
+        ("highlight_del", "rgba(191, 97, 106, 0.3)"),
+        ("highlight", "rgba(94, 129, 172, 0.3)"),
+        ("type", "#5e81ac"),
+        ("constant", "#d08770"),
+        ("string", "#a3be8c"),
+        ("comment", "#4c566a"),
+        ("keyword", "#81a1c1"),
+        ("function", "#b48ead"),
+        ("variable", "#88c0d0"),
+        ("punctuation", "#4c566a"),
+        ("markup_heading", "#b48ead"),
+        ("diff_plus", "#e7f0e4"),
+        ("diff_minus", "#f4e3e5"),
+        ("attribute", "#a3be8c"),
+        ("constructor", "#d08770"),
+        ("tag", "#81a1c1"),
+        ("escape", "#b48ead"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    let mut gruvbox_dark = HashMap::new();
-    gruvbox_dark.insert("background_color".to_string(), "#282828".to_string());
-    gruvbox_dark.insert("text_color".to_string(), "#ebdbb2".to_string());
-    gruvbox_dark.insert("link_color".to_string(), "#83a598".to_string());
-    gruvbox_dark.insert("heading_color".to_string(), "#fabd2f".to_string());
-    gruvbox_dark.insert("code_background".to_string(), "#3c3836".to_string());
-    gruvbox_dark.insert("code_text".to_string(), "#ebdbb2".to_string());
-    gruvbox_dark.insert("border_color".to_string(), "#665c54".to_string());
-    gruvbox_dark.insert("accent_color".to_string(), "#83a598".to_string()); // Same as link_color
-    gruvbox_dark.insert("blockquote_color".to_string(), "#928374".to_string());
-    gruvbox_dark.insert("secondary_background".to_string(), "#32302f".to_string());
-    gruvbox_dark.insert("secondary_accent".to_string(), "#fe8019".to_string());
-    // Syntax highlighting colors
-    gruvbox_dark.insert("highlight_add".to_string(), "rgba(166, 192, 102, 0.3)".to_string());
-    gruvbox_dark.insert("highlight_del".to_string(), "rgba(251, 73, 52, 0.3)".to_string());
-    gruvbox_dark.insert("highlight".to_string(), "rgba(131, 165, 152, 0.3)".to_string());
-    gruvbox_dark.insert("type".to_string(), "#83a598".to_string());
-    gruvbox_dark.insert("constant".to_string(), "#fe8019".to_string());
-    gruvbox_dark.insert("string".to_string(), "#b8bb26".to_string());
-    gruvbox_dark.insert("comment".to_string(), "#928374".to_string());
-    gruvbox_dark.insert("keyword".to_string(), "#fabd2f".to_string());
-    gruvbox_dark.insert("function".to_string(), "#fb4934".to_string());
-    gruvbox_dark.insert("variable".to_string(), "#8ec07c".to_string());
-    gruvbox_dark.insert("punctuation".to_string(), "#a89984".to_string());
-    gruvbox_dark.insert("markup_heading".to_string(), "#fb4934".to_string());
-    gruvbox_dark.insert("diff_plus".to_string(), "rgba(166, 192, 102, 0.3)".to_string());
-    gruvbox_dark.insert("diff_minus".to_string(), "rgba(251, 73, 52, 0.3)".to_string());
-    gruvbox_dark.insert("attribute".to_string(), "#b8bb26".to_string());
-    gruvbox_dark.insert("constructor".to_string(), "#fabd2f".to_string());
-    gruvbox_dark.insert("tag".to_string(), "#d3869b".to_string());
-    gruvbox_dark.insert("escape".to_string(), "#fb4934".to_string());
+    // Nord Dark
+    let nord_dark = vec![
+        ("background_color", "#2e3440"),
+        ("text_color", "#d8dee9"),
+        ("link_color", "#88c0d0"),
+        ("heading_color", "#eceff4"),
+        ("code_background", "#3b4252"),
+        ("code_text", "#d8dee9"),
+        ("border_color", "#434c5e"),
+        ("accent_color", "#88c0d0"),
+        ("blockquote_color", "#4c566a"),
+        ("secondary_background", "#353b49"),
+        ("secondary_accent", "#81a1c1"),
+        ("highlight_add", "rgba(163, 190, 140, 0.3)"),
+        ("highlight_del", "rgba(191, 97, 106, 0.3)"),
+        ("highlight", "rgba(94, 129, 172, 0.3)"),
+        ("type", "#88c0d0"),
+        ("constant", "#d08770"),
+        ("string", "#a3be8c"),
+        ("comment", "#4c566a"),
+        ("keyword", "#81a1c1"),
+        ("function", "#b48ead"),
+        ("variable", "#8fbcbb"),
+        ("punctuation", "#d8dee9"),
+        ("markup_heading", "#b48ead"),
+        ("diff_plus", "rgba(163, 190, 140, 0.3)"),
+        ("diff_minus", "rgba(191, 97, 106, 0.3)"),
+        ("attribute", "#a3be8c"),
+        ("constructor", "#d08770"),
+        ("tag", "#81a1c1"),
+        ("escape", "#b48ead"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    presets.insert("gruvbox".to_string(), (gruvbox_light, gruvbox_dark));
+    // OneDark Light
+    let onedark_light = vec![
+        ("background_color", "#fafafa"),
+        ("text_color", "#383a42"),
+        ("link_color", "#4078f2"),
+        ("heading_color", "#a626a4"),
+        ("code_background", "#f0f0f0"),
+        ("code_text", "#383a42"),
+        ("border_color", "#d0d0d0"),
+        ("accent_color", "#4078f2"),
+        ("blockquote_color", "#696c77"),
+        ("secondary_background", "#f5f5f5"),
+        ("secondary_accent", "#e45649"),
+        ("highlight_add", "rgba(166, 226, 46, 0.3)"),
+        ("highlight_del", "rgba(255, 99, 71, 0.3)"),
+        ("highlight", "rgba(64, 120, 242, 0.3)"),
+        ("type", "#4078f2"),
+        ("constant", "#986801"),
+        ("string", "#50a14f"),
+        ("comment", "#696c77"),
+        ("keyword", "#a626a4"),
+        ("function", "#c18401"),
+        ("variable", "#0184bc"),
+        ("punctuation", "#383a42"),
+        ("markup_heading", "#c18401"),
+        ("diff_plus", "#e9f5e9"),
+        ("diff_minus", "#fcecea"),
+        ("attribute", "#50a14f"),
+        ("constructor", "#986801"),
+        ("tag", "#4078f2"),
+        ("escape", "#c18401"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
 
-    presets
+    // OneDark Dark
+    let onedark_dark = vec![
+        ("background_color", "#282c34"),
+        ("text_color", "#abb2bf"),
+        ("link_color", "#61afef"),
+        ("heading_color", "#c678dd"),
+        ("code_background", "#353b45"),
+        ("code_text", "#abb2bf"),
+        ("border_color", "#4b5263"),
+        ("accent_color", "#61afef"),
+        ("blockquote_color", "#5c6370"),
+        ("secondary_background", "#21252b"),
+        ("secondary_accent", "#e06c75"),
+        ("highlight_add", "rgba(166, 226, 46, 0.3)"),
+        ("highlight_del", "rgba(255, 99, 71, 0.3)"),
+        ("highlight", "rgba(97, 175, 239, 0.3)"),
+        ("type", "#61afef"),
+        ("constant", "#d19a66"),
+        ("string", "#98c379"),
+        ("comment", "#5c6370"),
+        ("keyword", "#c678dd"),
+        ("function", "#e5c07b"),
+        ("variable", "#56b6c2"),
+        ("punctuation", "#abb2bf"),
+        ("markup_heading", "#e5c07b"),
+        ("diff_plus", "rgba(166, 226, 46, 0.3)"),
+        ("diff_minus", "rgba(255, 99, 71, 0.3)"),
+        ("attribute", "#98c379"),
+        ("constructor", "#d19a66"),
+        ("tag", "#61afef"),
+        ("escape", "#e5c07b"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Rosé Pine Light
+    let rosepine_light = vec![
+        ("background_color", "#fffaf3"),
+        ("text_color", "#575279"),
+        ("link_color", "#286983"),
+        ("heading_color", "#d7827e"),
+        ("code_background", "#f2e9e1"),
+        ("code_text", "#575279"),
+        ("border_color", "#d4d4d4"),
+        ("accent_color", "#286983"),
+        ("blockquote_color", "#797593"),
+        ("secondary_background", "#faf4ed"),
+        ("secondary_accent", "#ea9d34"),
+        ("highlight_add", "rgba(108, 153, 110, 0.3)"),
+        ("highlight_del", "rgba(235, 111, 146, 0.3)"),
+        ("highlight", "rgba(40, 105, 131, 0.3)"),
+        ("type", "#286983"),
+        ("constant", "#d7827e"),
+        ("string", "#6c996e"),
+        ("comment", "#797593"),
+        ("keyword", "#907aa9"),
+        ("function", "#ea9d34"),
+        ("variable", "#56949f"),
+        ("punctuation", "#575279"),
+        ("markup_heading", "#ea9d34"),
+        ("diff_plus", "#eef5ee"),
+        ("diff_minus", "#fceeee"),
+        ("attribute", "#6c996e"),
+        ("constructor", "#d7827e"),
+        ("tag", "#907aa9"),
+        ("escape", "#ea9d34"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Rosé Pine Dark
+    let rosepine_dark = vec![
+        ("background_color", "#191724"),
+        ("text_color", "#e0def4"),
+        ("link_color", "#56949f"),
+        ("heading_color", "#ebbcba"),
+        ("code_background", "#1f1d2e"),
+        ("code_text", "#e0def4"),
+        ("border_color", "#403d52"),
+        ("accent_color", "#56949f"),
+        ("blockquote_color", "#6e6a86"),
+        ("secondary_background", "#26233a"),
+        ("secondary_accent", "#f6c177"),
+        ("highlight_add", "rgba(108, 153, 110, 0.3)"),
+        ("highlight_del", "rgba(235, 111, 146, 0.3)"),
+        ("highlight", "rgba(86, 148, 159, 0.3)"),
+        ("type", "#56949f"),
+        ("constant", "#ebbcba"),
+        ("string", "#9ccfd8"),
+        ("comment", "#6e6a86"),
+        ("keyword", "#c4a7e7"),
+        ("function", "#f6c177"),
+        ("variable", "#31748f"),
+        ("punctuation", "#e0def4"),
+        ("markup_heading", "#f6c177"),
+        ("diff_plus", "rgba(108, 153, 110, 0.3)"),
+        ("diff_minus", "rgba(235, 111, 146, 0.3)"),
+        ("attribute", "#9ccfd8"),
+        ("constructor", "#ebbcba"),
+        ("tag", "#c4a7e7"),
+        ("escape", "#f6c177"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Dracula Light
+    let dracula_light = vec![
+        ("background_color", "#f8f8f2"),
+        ("text_color", "#282a36"),
+        ("link_color", "#8be9fd"),
+        ("heading_color", "#ff79c6"),
+        ("code_background", "#f1fa8c"),
+        ("code_text", "#282a36"),
+        ("border_color", "#d8d8d8"),
+        ("accent_color", "#8be9fd"),
+        ("blockquote_color", "#6272a4"),
+        ("secondary_background", "#f0f0f0"),
+        ("secondary_accent", "#bd93f9"),
+        ("highlight_add", "rgba(139, 233, 253, 0.3)"),
+        ("highlight_del", "rgba(255, 121, 198, 0.3)"),
+        ("highlight", "rgba(80, 250, 123, 0.3)"),
+        ("type", "#8be9fd"),
+        ("constant", "#f1fa8c"),
+        ("string", "#50fa7b"),
+        ("comment", "#6272a4"),
+        ("keyword", "#ff79c6"),
+        ("function", "#bd93f9"),
+        ("variable", "#ffb86c"),
+        ("punctuation", "#282a36"),
+        ("markup_heading", "#bd93f9"),
+        ("diff_plus", "#e9f5e9"),
+        ("diff_minus", "#fcecea"),
+        ("attribute", "#50fa7b"),
+        ("constructor", "#f1fa8c"),
+        ("tag", "#ff79c6"),
+        ("escape", "#bd93f9"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Dracula Dark
+    let dracula_dark = vec![
+        ("background_color", "#282a36"),
+        ("text_color", "#f8f8f2"),
+        ("link_color", "#8be9fd"),
+        ("heading_color", "#ff79c6"),
+        ("code_background", "#44475a"),
+        ("code_text", "#f8f8f2"),
+        ("border_color", "#6272a4"),
+        ("accent_color", "#8be9fd"),
+        ("blockquote_color", "#6272a4"),
+        ("secondary_background", "#343746"),
+        ("secondary_accent", "#bd93f9"),
+        ("highlight_add", "rgba(139, 233, 253, 0.3)"),
+        ("highlight_del", "rgba(255, 121, 198, 0.3)"),
+        ("highlight", "rgba(80, 250, 123, 0.3)"),
+        ("type", "#8be9fd"),
+        ("constant", "#f1fa8c"),
+        ("string", "#50fa7b"),
+        ("comment", "#6272a4"),
+        ("keyword", "#ff79c6"),
+        ("function", "#bd93f9"),
+        ("variable", "#ffb86c"),
+        ("punctuation", "#f8f8f2"),
+        ("markup_heading", "#bd93f9"),
+        ("diff_plus", "rgba(80, 250, 123, 0.3)"),
+        ("diff_minus", "rgba(255, 121, 198, 0.3)"),
+        ("attribute", "#50fa7b"),
+        ("constructor", "#f1fa8c"),
+        ("tag", "#ff79c6"),
+        ("escape", "#bd93f9"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Tokyo Night Light
+    let tokyonight_light = vec![
+        ("background_color", "#f5f6f5"),
+        ("text_color", "#343b58"),
+        ("link_color", "#2a6ae9"),
+        ("heading_color", "#965ada"),
+        ("code_background", "#ebedeb"),
+        ("code_text", "#343b58"),
+        ("border_color", "#d7dae0"),
+        ("accent_color", "#2a6ae9"),
+        ("blockquote_color", "#676c87"),
+        ("secondary_background", "#eef0f0"),
+        ("secondary_accent", "#d84c6e"),
+        ("highlight_add", "rgba(66, 211, 146, 0.3)"),
+        ("highlight_del", "rgba(216, 76, 110, 0.3)"),
+        ("highlight", "rgba(42, 106, 233, 0.3)"),
+        ("type", "#2a6ae9"),
+        ("constant", "#cb7756"),
+        ("string", "#42d392"),
+        ("comment", "#676c87"),
+        ("keyword", "#965ada"),
+        ("function", "#d89f5c"),
+        ("variable", "#2b80b7"),
+        ("punctuation", "#343b58"),
+        ("markup_heading", "#d89f5c"),
+        ("diff_plus", "#e9f5ef"),
+        ("diff_minus", "#fcecee"),
+        ("attribute", "#42d392"),
+        ("constructor", "#cb7756"),
+        ("tag", "#2a6ae9"),
+        ("escape", "#d89f5c"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Tokyo Night Dark
+    let tokyonight_dark = vec![
+        ("background_color", "#1a1b26"),
+        ("text_color", "#a9b1d6"),
+        ("link_color", "#7aa2f7"),
+        ("heading_color", "#bb9af7"),
+        ("code_background", "#24283b"),
+        ("code_text", "#a9b1d6"),
+        ("border_color", "#414868"),
+        ("accent_color", "#7aa2f7"),
+        ("blockquote_color", "#565f89"),
+        ("secondary_background", "#16161e"),
+        ("secondary_accent", "#f7768e"),
+        ("highlight_add", "rgba(66, 211, 146, 0.3)"),
+        ("highlight_del", "rgba(255, 118, 142, 0.3)"),
+        ("highlight", "rgba(122, 162, 247, 0.3)"),
+        ("type", "#7aa2f7"),
+        ("constant", "#ff9e64"),
+        ("string", "#9ece6a"),
+        ("comment", "#565f89"),
+        ("keyword", "#bb9af7"),
+        ("function", "#e0af68"),
+        ("variable", "#7dcfff"),
+        ("punctuation", "#a9b1d6"),
+        ("markup_heading", "#e0af68"),
+        ("diff_plus", "rgba(66, 211, 146, 0.3)"),
+        ("diff_minus", "rgba(255, 118, 142, 0.3)"),
+        ("attribute", "#9ece6a"),
+        ("constructor", "#ff9e64"),
+        ("tag", "#7aa2f7"),
+        ("escape", "#e0af68"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Monokai Light
+    let monokai_light = vec![
+        ("background_color", "#fafafa"),
+        ("text_color", "#272822"),
+        ("link_color", "#66d9ef"),
+        ("heading_color", "#f92672"),
+        ("code_background", "#f0f0f0"),
+        ("code_text", "#272822"),
+        ("border_color", "#d0d0d0"),
+        ("accent_color", "#66d9ef"),
+        ("blockquote_color", "#75715e"),
+        ("secondary_background", "#f5f5f5"),
+        ("secondary_accent", "#fd971f"),
+        ("highlight_add", "rgba(102, 217, 239, 0.3)"),
+        ("highlight_del", "rgba(249, 38, 114, 0.3)"),
+        ("highlight", "rgba(166, 226, 46, 0.3)"),
+        ("type", "#66d9ef"),
+        ("constant", "#ae81ff"),
+        ("string", "#a6e22e"),
+        ("comment", "#75715e"),
+        ("keyword", "#f92672"),
+        ("function", "#fd971f"),
+        ("variable", "#e6db74"),
+        ("punctuation", "#272822"),
+        ("markup_heading", "#fd971f"),
+        ("diff_plus", "#e9f5e9"),
+        ("diff_minus", "#fcecea"),
+        ("attribute", "#a6e22e"),
+        ("constructor", "#ae81ff"),
+        ("tag", "#f92672"),
+        ("escape", "#fd971f"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Monokai Dark
+    let monokai_dark = vec![
+        ("background_color", "#272822"),
+        ("text_color", "#f8f8f2"),
+        ("link_color", "#66d9ef"),
+        ("heading_color", "#f92672"),
+        ("code_background", "#3e3d32"),
+        ("code_text", "#f8f8f2"),
+        ("border_color", "#75715e"),
+        ("accent_color", "#66d9ef"),
+        ("blockquote_color", "#75715e"),
+        ("secondary_background", "#1e1f1c"),
+        ("secondary_accent", "#fd971f"),
+        ("highlight_add", "rgba(102, 217, 239, 0.3)"),
+        ("highlight_del", "rgba(249, 38, 114, 0.3)"),
+        ("highlight", "rgba(166, 226, 46, 0.3)"),
+        ("type", "#66d9ef"),
+        ("constant", "#ae81ff"),
+        ("string", "#a6e22e"),
+        ("comment", "#75715e"),
+        ("keyword", "#f92672"),
+        ("function", "#fd971f"),
+        ("variable", "#e6db74"),
+        ("punctuation", "#f8f8f2"),
+        ("markup_heading", "#fd971f"),
+        ("diff_plus", "rgba(166, 226, 46, 0.3)"),
+        ("diff_minus", "rgba(249, 38, 114, 0.3)"),
+        ("attribute", "#a6e22e"),
+        ("constructor", "#ae81ff"),
+        ("tag", "#f92672"),
+        ("escape", "#fd971f"),
+    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+
+    // Return all preset themes
+    vec![
+        ("catppuccin".to_string(), (catppuccin_light, catppuccin_dark)),
+        ("gruvbox".to_string(), (gruvbox_light, gruvbox_dark)),
+        ("nord".to_string(), (nord_light, nord_dark)),
+        ("onedark".to_string(), (onedark_light, onedark_dark)),
+        ("rosepine".to_string(), (rosepine_light, rosepine_dark)),
+        ("dracula".to_string(), (dracula_light, dracula_dark)),
+        ("tokyonight".to_string(), (tokyonight_light, tokyonight_dark)),
+        ("monokai".to_string(), (monokai_light, monokai_dark)),
+    ].into_iter().collect::<HashMap<_, _>>()
 }
