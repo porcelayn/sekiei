@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock title %}
+{% block head %}
+    <script defer src="/static/cc.js"></script>
+{% endblock head %}
 {% block content %}
     <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
     {% if table_of_contents | length > 0 %}
@@ -21,17 +24,5 @@
         </div>
     </article>
 <script>
-    function copyCode(button) {
-        const codeBlock = button.closest('.code-block').querySelector('code');
-        const codeLines = codeBlock.querySelectorAll('.code-line');
-        const codeText = Array.from(codeLines)
-            .map(line => line.textContent)
-            .join('\n'); 
-        navigator.clipboard.writeText(codeText).then(() => {
-            console.log('Copied:\n' + codeText);
-        }).catch((err) => {
-            console.error('Failed to copy: ', err);
-        });
-    }
 </script>
 {% endblock content %}
