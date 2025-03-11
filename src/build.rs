@@ -6,6 +6,7 @@ use crate::{
     utils::is_not_hidden_dir,
 };
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
+use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, ImageEncoder};
 use minify_html::minify;
 use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
@@ -299,19 +300,79 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     output_path.display()
                 );
             } else {
-                // Restore copying of non-Markdown files (e.g., images) from content to dist/static
                 let relative_path = entry.path().strip_prefix("content")?;
                 let sanitized_name =
                     crate::utils::sanitize_filename(&relative_path.to_string_lossy());
                 let output_path = dist_static.join(&sanitized_name);
-
                 create_directory_safely(output_path.parent().unwrap())?;
-                fs::copy(entry.path(), &output_path)?;
-                println!(
-                    "Copying {} -> {}",
-                    entry.path().display(),
-                    output_path.display()
-                );
+
+                match entry
+                    .path()
+                    .extension()
+                    .and_then(|s| s.to_str().map(|s| s.to_lowercase()))
+                {
+                    Some(ext) if ext == "jpg" || ext == "jpeg" => {
+                        let img = image::open(entry.path()).map_err(|e| {
+                            format!("Failed to open image {}: {}", entry.path().display(), e)
+                        })?;
+                        let quality = config.images.quality.min(100); 
+                        let mut buffer = Vec::new();
+                        let mut encoder = JpegEncoder::new_with_quality(&mut buffer, quality);
+                        encoder.encode_image(&img).map_err(|e| {
+                            format!("Failed to compress JPEG {}: {}", entry.path().display(), e)
+                        })?;
+
+                        fs::write(&output_path, &buffer).map_err(|e| {
+                            format!(
+                                "Failed to write compressed image {}: {}",
+                                output_path.display(),
+                                e
+                            )
+                        })?;
+                        println!(
+                            "Compressing {} -> {} (quality: {})",
+                            entry.path().display(),
+                            output_path.display(),
+                            quality
+                        );
+                    }
+                    Some(ext) if ext == "png" => {
+let img = image::open(entry.path())
+                            .map_err(|e| format!("Failed to open image {}: {}", entry.path().display(), e))?;
+                        let quality = config.images.quality.min(100); // Cap at 100
+                        let mut buffer = Vec::new();
+                        let compression = match quality {
+                            0..=33 => image::codecs::png::CompressionType::Fast,
+                            34..=66 => image::codecs::png::CompressionType::Default,
+                            67..=100 => image::codecs::png::CompressionType::Best,
+                            _ => unreachable!("Quality capped at 100"),
+                        };
+                        let encoder = PngEncoder::new_with_quality(
+                            &mut buffer,
+                            compression,
+                            image::codecs::png::FilterType::NoFilter 
+                        );
+                        encoder.write_image(
+                            img.as_bytes(),
+                            img.width(),
+                            img.height(),
+                image::ExtendedColorType::Rgba8,
+                        )
+                            .map_err(|e| format!("Failed to compress PNG {}: {}", entry.path().display(), e))?;
+
+                        fs::write(&output_path, &buffer)
+                            .map_err(|e| format!("Failed to write compressed image {}: {}", output_path.display(), e))?;
+                        println!("Compressing {} -> {} (quality: {})", entry.path().display(), output_path.display(), quality);
+                    }
+                    _ => {
+                        fs::copy(entry.path(), &output_path)?;
+                        println!(
+                            "Copying {} -> {}",
+                            entry.path().display(),
+                            output_path.display()
+                        );
+                    }
+                }
             }
         } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
             let file_name = entry.file_name().to_string_lossy();

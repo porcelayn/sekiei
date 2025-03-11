@@ -24,10 +24,21 @@ impl ThemeType {
     //     }
     // }
 }
-
 #[derive(Deserialize)]
 pub struct Config {
     pub theme: ThemeConfig,
+    #[serde(default)]
+    pub images: ImagesConfig, 
+}
+
+#[derive(Deserialize, Default)]
+pub struct ImagesConfig {
+    #[serde(default = "default_quality")]
+    pub quality: u8,
+}
+
+fn default_quality() -> u8 {
+    100 
 }
 
 #[derive(Deserialize)]
