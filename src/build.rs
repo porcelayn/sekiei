@@ -106,7 +106,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     println!("Generated and minified theme.css with {} theme", config.theme.theme_type.as_str());
 
     let static_dir = Path::new("static");
-    let js_session = Session::new();
+    let js_session = Session::new(); // Single session for JS minification
     if static_dir.exists() {
         for entry in WalkDir::new(static_dir).into_iter().filter_map(|e| e.ok()) {
             if entry.path().is_file() {
@@ -222,6 +222,15 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())?;
 
                 println!("Converting {} -> {}", entry.path().display(), output_path.display());
+            } else {
+                // Restore copying of non-Markdown files (e.g., images) from content to dist/static
+                let relative_path = entry.path().strip_prefix("content")?;
+                let sanitized_name = crate::utils::sanitize_filename(&relative_path.to_string_lossy());
+                let output_path = dist_static.join(&sanitized_name);
+                
+                create_directory_safely(output_path.parent().unwrap())?;
+                fs::copy(entry.path(), &output_path)?;
+                println!("Copying {} -> {}", entry.path().display(), output_path.display());
             }
         } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
             let file_name = entry.file_name().to_string_lossy();
