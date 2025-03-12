@@ -13,7 +13,8 @@ pub fn sanitize_filename(path: &str) -> String {
 
 pub fn is_not_hidden_dir(entry: &walkdir::DirEntry) -> bool {
     if entry.file_type().is_dir() {
-        entry.file_name()
+        entry
+            .file_name()
             .to_str()
             .map_or(false, |name| !name.starts_with('.'))
     } else {

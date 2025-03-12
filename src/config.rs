@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -28,7 +28,7 @@ impl ThemeType {
 pub struct Config {
     pub theme: ThemeConfig,
     #[serde(default)]
-    pub images: ImagesConfig, 
+    pub images: ImagesConfig,
 }
 
 #[derive(Deserialize, Default, Serialize)]
@@ -97,7 +97,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#df8e1d"),
         ("tag", "#ea76cb"),
         ("escape", "#d20f39"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Catppuccin Dark
     let catppuccin_dark = vec![
@@ -130,7 +133,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#f9e2af"),
         ("tag", "#f5c2e7"),
         ("escape", "#f38ba8"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Gruvbox Light
     let gruvbox_light = vec![
@@ -163,7 +169,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#b57614"),
         ("tag", "#af3a03"),
         ("escape", "#9d0006"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Gruvbox Dark
     let gruvbox_dark = vec![
@@ -196,7 +205,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#fabd2f"),
         ("tag", "#d3869b"),
         ("escape", "#fb4934"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Nord Light
     let nord_light = vec![
@@ -229,7 +241,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#d08770"),
         ("tag", "#81a1c1"),
         ("escape", "#b48ead"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Nord Dark
     let nord_dark = vec![
@@ -262,7 +277,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#d08770"),
         ("tag", "#81a1c1"),
         ("escape", "#b48ead"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // OneDark Light
     let onedark_light = vec![
@@ -295,7 +313,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#986801"),
         ("tag", "#4078f2"),
         ("escape", "#c18401"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // OneDark Dark
     let onedark_dark = vec![
@@ -328,7 +349,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#d19a66"),
         ("tag", "#61afef"),
         ("escape", "#e5c07b"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Rosé Pine Light
     let rosepine_light = vec![
@@ -361,7 +385,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#d7827e"),
         ("tag", "#907aa9"),
         ("escape", "#ea9d34"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Rosé Pine Dark
     let rosepine_dark = vec![
@@ -394,7 +421,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#ebbcba"),
         ("tag", "#c4a7e7"),
         ("escape", "#f6c177"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Dracula Light
     let dracula_light = vec![
@@ -427,7 +457,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#f1fa8c"),
         ("tag", "#ff79c6"),
         ("escape", "#bd93f9"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Dracula Dark
     let dracula_dark = vec![
@@ -460,7 +493,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#f1fa8c"),
         ("tag", "#ff79c6"),
         ("escape", "#bd93f9"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Tokyo Night Light
     let tokyonight_light = vec![
@@ -493,7 +529,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#cb7756"),
         ("tag", "#2a6ae9"),
         ("escape", "#d89f5c"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Tokyo Night Dark
     let tokyonight_dark = vec![
@@ -526,7 +565,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#ff9e64"),
         ("tag", "#7aa2f7"),
         ("escape", "#e0af68"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Monokai Light
     let monokai_light = vec![
@@ -559,7 +601,10 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#ae81ff"),
         ("tag", "#f92672"),
         ("escape", "#fd971f"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Monokai Dark
     let monokai_dark = vec![
@@ -592,17 +637,28 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ("constructor", "#ae81ff"),
         ("tag", "#f92672"),
         ("escape", "#fd971f"),
-    ].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
 
     // Return all preset themes
     vec![
-        ("catppuccin".to_string(), (catppuccin_light, catppuccin_dark)),
+        (
+            "catppuccin".to_string(),
+            (catppuccin_light, catppuccin_dark),
+        ),
         ("gruvbox".to_string(), (gruvbox_light, gruvbox_dark)),
         ("nord".to_string(), (nord_light, nord_dark)),
         ("onedark".to_string(), (onedark_light, onedark_dark)),
         ("rosepine".to_string(), (rosepine_light, rosepine_dark)),
         ("dracula".to_string(), (dracula_light, dracula_dark)),
-        ("tokyonight".to_string(), (tokyonight_light, tokyonight_dark)),
+        (
+            "tokyonight".to_string(),
+            (tokyonight_light, tokyonight_dark),
+        ),
         ("monokai".to_string(), (monokai_light, monokai_dark)),
-    ].into_iter().collect::<HashMap<_, _>>()
+    ]
+    .into_iter()
+    .collect::<HashMap<_, _>>()
 }

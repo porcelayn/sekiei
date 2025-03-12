@@ -6,7 +6,10 @@ use crate::{
     utils::is_not_hidden_dir,
 };
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
-use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, codecs::webp::WebPEncoder, ImageEncoder, imageops};
+use image::{
+    self, ImageEncoder, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder,
+    codecs::webp::WebPEncoder, imageops,
+};
 use minify_html::minify;
 use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
@@ -21,7 +24,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     create_directory_safely(dist)?;
     let dist_static = dist.join("static");
     create_directory_safely(&dist_static)?;
-    
+
     let lazy_dir = dist_static.join("lazy");
     create_directory_safely(&lazy_dir)?;
 
@@ -29,7 +32,10 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         .map_err(|e| format!("Failed to read Config.toml: {}", e))?;
     let config: Config =
         toml::from_str(&config_str).map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
-    config.images.validate().map_err(|e| format!("Invalid [images] configuration: {}", e))?;
+    config
+        .images
+        .validate()
+        .map_err(|e| format!("Invalid [images] configuration: {}", e))?;
 
     let required_vars = vec![
         "background_color",
@@ -211,13 +217,17 @@ document.addEventListener('DOMContentLoaded', () => {
         TopLevelMode::Global,
         lazy_loading_js.as_bytes(),
         &mut minified_js,
-    ).map_err(|e| format!("Failed to minify lazyload.js: {}", e))?;
-    safely_write_file(&dist_static.join("lazyload.js"), std::str::from_utf8(&minified_js)?)?;
+    )
+    .map_err(|e| format!("Failed to minify lazyload.js: {}", e))?;
+    safely_write_file(
+        &dist_static.join("lazyload.js"),
+        std::str::from_utf8(&minified_js)?,
+    )?;
     let minified_css = CssMinifier::default()
         .minify(&lazy_loading_css, CssLevel::Three)
         .map_err(|e| format!("Failed to minify lazyload.css: {}", e))?;
     safely_write_file(&dist_static.join("lazyload.css"), &minified_css)?;
-    
+
     println!("Generated and minified lazyload.js and lazyload.css");
 
     let static_dir = Path::new("static");
@@ -334,24 +344,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fn create_placeholder_image(
-        img_path: &Path, 
-        output_path: &Path, 
-        use_webp: bool
+        img_path: &Path,
+        output_path: &Path,
+        use_webp: bool,
     ) -> Result<(), Box<dyn Error>> {
         let img = image::open(img_path)?;
-        
+
         let width = 20;
         let height = (img.height() as f32 * (width as f32 / img.width() as f32)) as u32;
-        
+
         let tiny = img.resize(width, height, imageops::FilterType::Triangle);
         let blurred = tiny.blur(3.0);
-        
+
         if let Some(parent) = output_path.parent() {
             create_directory_safely(parent)?;
         }
-        
+
         let mut buffer = Vec::new();
-        
+
         if use_webp {
             let encoder = WebPEncoder::new_lossless(&mut buffer);
             encoder.encode(
@@ -360,16 +370,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 blurred.height(),
                 blurred.color().into(),
             )?;
-        } else if output_path.extension().and_then(|e| e.to_str()) == Some("jpg") 
-            || output_path.extension().and_then(|e| e.to_str()) == Some("jpeg") 
+        } else if output_path.extension().and_then(|e| e.to_str()) == Some("jpg")
+            || output_path.extension().and_then(|e| e.to_str()) == Some("jpeg")
         {
             let mut encoder = JpegEncoder::new_with_quality(&mut buffer, 30);
             encoder.encode_image(&blurred)?;
-        } else { // PNG
+        } else {
+            // PNG
             let encoder = PngEncoder::new_with_quality(
                 &mut buffer,
                 image::codecs::png::CompressionType::Fast,
-                image::codecs::png::FilterType::NoFilter
+                image::codecs::png::FilterType::NoFilter,
             );
             encoder.write_image(
                 blurred.as_bytes(),
@@ -378,18 +389,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 blurred.color().into(),
             )?;
         }
-        
+
         fs::write(output_path, buffer)?;
         Ok(())
     }
 
-    fn add_lazy_loading(
-        html: &str, 
-        compress_to_webp: bool
-    ) -> String {
+    fn add_lazy_loading(html: &str, compress_to_webp: bool) -> String {
         let mut modified_html = html.to_string();
         let re = regex::Regex::new(r#"<img\s+([^>]*)src="([^"]+)"([^>]*)>"#).unwrap();
-        
+
         modified_html = re.replace_all(&modified_html, |caps: &regex::Captures| {
             let attrs_before = &caps[1];
             let src = &caps[2];
@@ -412,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 attrs_before, placeholder_path, src, attrs_after, placeholder_path
             )
         }).to_string();
-        
+
         modified_html
     }
 
@@ -440,12 +448,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 let content = fs::read_to_string(entry.path())?;
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
                 let (mut html_content, toc) = markdown_to_html(md_content, entry.path());
-                
+
                 // Add lazy loading to images in HTML
                 html_content = add_lazy_loading(&html_content, config.images.compress_to_webp);
-                
+
                 if config.images.compress_to_webp {
-                    html_content = html_content.replace(".jpg", ".webp").replace(".jpeg", ".webp").replace(".png", ".webp");
+                    html_content = html_content
+                        .replace(".jpg", ".webp")
+                        .replace(".jpeg", ".webp")
+                        .replace(".png", ".webp");
                 }
 
                 let mut context = tera::Context::new();
@@ -487,37 +498,60 @@ document.addEventListener('DOMContentLoaded', () => {
                     .extension()
                     .and_then(|s| s.to_str().map(|s| s.to_lowercase()))
                 {
-                    Some(ext) if (ext == "jpg" || ext == "jpeg" || ext == "png") && config.images.compress_to_webp => {
-                        let img = image::open(entry.path())
-                            .map_err(|e| format!("Failed to open image {}: {}", entry.path().display(), e))?;
+                    Some(ext)
+                        if (ext == "jpg" || ext == "jpeg" || ext == "png")
+                            && config.images.compress_to_webp =>
+                    {
+                        let img = image::open(entry.path()).map_err(|e| {
+                            format!("Failed to open image {}: {}", entry.path().display(), e)
+                        })?;
                         let rgba_img = img.to_rgba8(); // Convert to RGBA explicitly
                         let mut buffer = Vec::new();
                         let encoder = WebPEncoder::new_lossless(&mut buffer);
-                        encoder.encode(
-                            rgba_img.as_raw(),
-                            rgba_img.width(),
-                            rgba_img.height(),
-                            image::ExtendedColorType::Rgba8 
-                        )
-                            .map_err(|e| format!("Failed to encode WebP image {}: {}", entry.path().display(), e))?;
+                        encoder
+                            .encode(
+                                rgba_img.as_raw(),
+                                rgba_img.width(),
+                                rgba_img.height(),
+                                image::ExtendedColorType::Rgba8,
+                            )
+                            .map_err(|e| {
+                                format!(
+                                    "Failed to encode WebP image {}: {}",
+                                    entry.path().display(),
+                                    e
+                                )
+                            })?;
 
                         output_path.set_extension("webp");
-                        fs::write(&output_path, &buffer)
-                            .map_err(|e| format!("Failed to write WebP image {}: {}", output_path.display(), e))?;
-                        
+                        fs::write(&output_path, &buffer).map_err(|e| {
+                            format!(
+                                "Failed to write WebP image {}: {}",
+                                output_path.display(),
+                                e
+                            )
+                        })?;
+
                         // Create placeholder image for lazy loading
-                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let file_stem = output_path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy();
                         let placeholder_path = lazy_dir.join(format!("{}.webp", file_stem));
                         create_placeholder_image(entry.path(), &placeholder_path, true)
                             .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-                        
-                        println!("Converting {} -> {} (WebP) with placeholder", entry.path().display(), output_path.display());
-                    },
+
+                        println!(
+                            "Converting {} -> {} (WebP) with placeholder",
+                            entry.path().display(),
+                            output_path.display()
+                        );
+                    }
                     Some(ext) if ext == "jpg" || ext == "jpeg" => {
                         let img = image::open(entry.path()).map_err(|e| {
                             format!("Failed to open image {}: {}", entry.path().display(), e)
                         })?;
-                        let quality = config.images.quality.min(100); 
+                        let quality = config.images.quality.min(100);
                         let mut buffer = Vec::new();
                         let mut encoder = JpegEncoder::new_with_quality(&mut buffer, quality);
                         encoder.encode_image(&img).map_err(|e| {
@@ -531,13 +565,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 e
                             )
                         })?;
-                        
+
                         // Create placeholder image for lazy loading
-                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let file_stem = output_path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy();
                         let placeholder_path = lazy_dir.join(format!("{}.jpg", file_stem));
                         create_placeholder_image(entry.path(), &placeholder_path, false)
                             .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-                        
+
                         println!(
                             "Compressing {} -> {} (quality: {}) with placeholder",
                             entry.path().display(),
@@ -546,8 +583,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         );
                     }
                     Some(ext) if ext == "png" => {
-                        let img = image::open(entry.path())
-                            .map_err(|e| format!("Failed to open image {}: {}", entry.path().display(), e))?;
+                        let img = image::open(entry.path()).map_err(|e| {
+                            format!("Failed to open image {}: {}", entry.path().display(), e)
+                        })?;
                         let quality = config.images.quality.min(100); // Cap at 100
                         let mut buffer = Vec::new();
                         let compression = match quality {
@@ -559,25 +597,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         let encoder = PngEncoder::new_with_quality(
                             &mut buffer,
                             compression,
-                            image::codecs::png::FilterType::NoFilter 
+                            image::codecs::png::FilterType::NoFilter,
                         );
-                        encoder.write_image(
-                            img.as_bytes(),
-                            img.width(),
-                            img.height(),
-                            image::ExtendedColorType::Rgba8,
-                        )
-                            .map_err(|e| format!("Failed to compress PNG {}: {}", entry.path().display(), e))?;
+                        encoder
+                            .write_image(
+                                img.as_bytes(),
+                                img.width(),
+                                img.height(),
+                                image::ExtendedColorType::Rgba8,
+                            )
+                            .map_err(|e| {
+                                format!("Failed to compress PNG {}: {}", entry.path().display(), e)
+                            })?;
 
-                        fs::write(&output_path, &buffer)
-                            .map_err(|e| format!("Failed to write compressed image {}: {}", output_path.display(), e))?;
-                        
+                        fs::write(&output_path, &buffer).map_err(|e| {
+                            format!(
+                                "Failed to write compressed image {}: {}",
+                                output_path.display(),
+                                e
+                            )
+                        })?;
+
                         // Create placeholder image for lazy loading
-                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let file_stem = output_path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy();
                         let placeholder_path = lazy_dir.join(format!("{}.png", file_stem));
                         create_placeholder_image(entry.path(), &placeholder_path, false)
                             .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-                        
+
                         println!(
                             "Compressing {} -> {} (quality: {}) with placeholder",
                             entry.path().display(),

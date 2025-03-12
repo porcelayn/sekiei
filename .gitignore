@@ -1,4 +1,6 @@
 target
+bin
 content
 dist
 Config.toml
+recipe.toml

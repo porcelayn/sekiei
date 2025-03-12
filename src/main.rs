@@ -22,7 +22,6 @@ struct Cli {
 enum Commands {
     Build,
     Serve,
-    RebuildAndServe,
 }
 
 #[tokio::main]
@@ -32,10 +31,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     match cli.command {
         Commands::Build => build::build()?,
         Commands::Serve => serve::serve().await?,
-        Commands::RebuildAndServe => {
-            build::build()?;
-            serve::serve().await?;
-        }
     }
 
     Ok(())
