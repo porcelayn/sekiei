@@ -6,7 +6,7 @@ use crate::{
     utils::is_not_hidden_dir,
 };
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
-use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, codecs::webp::WebPEncoder, ImageEncoder};
+use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, codecs::webp::WebPEncoder, ImageEncoder, imageops};
 use minify_html::minify;
 use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
@@ -21,6 +21,9 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     create_directory_safely(dist)?;
     let dist_static = dist.join("static");
     create_directory_safely(&dist_static)?;
+    
+    let lazy_dir = dist_static.join("lazy");
+    create_directory_safely(&lazy_dir)?;
 
     let config_str = fs::read_to_string("Config.toml")
         .map_err(|e| format!("Failed to read Config.toml: {}", e))?;
@@ -135,8 +138,89 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         config.theme.theme_type.as_str()
     );
 
+    let lazy_loading_js = r#"
+document.addEventListener('DOMContentLoaded', () => {
+    const lazyImages = document.querySelectorAll('img[data-src]');
+    
+    const lazyLoadOptions = {
+        root: null,
+        rootMargin: '200px 0px 0px 0px', 
+        threshold: 0.1
+    };
+    
+    const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                
+                img.onload = () => {
+                    img.classList.add('loaded');
+                    img.removeAttribute('data-src');
+                    
+                    const container = img.closest('.lazy-image-container');
+                    if (container) {
+                        const placeholder = container.querySelector('img.placeholder');
+                        if (placeholder) {
+                            placeholder.remove();
+                        }
+                    }
+                };
+                
+                observer.unobserve(img);
+            }
+        });
+    }, lazyLoadOptions);
+    
+    lazyImages.forEach(image => {
+        lazyLoadObserver.observe(image);
+    });
+});
+"#;
+
+    let lazy_loading_css = r#"
+.lazy-image-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.lazy-image-container img.placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 1;
+}
+
+.lazy-image-container img.loaded {
+    filter: blur(0);
+}
+
+.lazy-image-container img.loaded + img.placeholder {
+    opacity: 0;
+}
+"#;
+
+    let js_session = Session::new();
+    let mut minified_js = Vec::new();
+    js_minify(
+        &js_session,
+        TopLevelMode::Global,
+        lazy_loading_js.as_bytes(),
+        &mut minified_js,
+    ).map_err(|e| format!("Failed to minify lazyload.js: {}", e))?;
+    safely_write_file(&dist_static.join("lazyload.js"), std::str::from_utf8(&minified_js)?)?;
+    let minified_css = CssMinifier::default()
+        .minify(&lazy_loading_css, CssLevel::Three)
+        .map_err(|e| format!("Failed to minify lazyload.css: {}", e))?;
+    safely_write_file(&dist_static.join("lazyload.css"), &minified_css)?;
+    
+    println!("Generated and minified lazyload.js and lazyload.css");
+
     let static_dir = Path::new("static");
-    let js_session = Session::new(); // Single session for JS minification
     if static_dir.exists() {
         for entry in WalkDir::new(static_dir).into_iter().filter_map(|e| e.ok()) {
             if entry.path().is_file() {
@@ -249,6 +333,89 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    fn create_placeholder_image(
+        img_path: &Path, 
+        output_path: &Path, 
+        use_webp: bool
+    ) -> Result<(), Box<dyn Error>> {
+        let img = image::open(img_path)?;
+        
+        let width = 20;
+        let height = (img.height() as f32 * (width as f32 / img.width() as f32)) as u32;
+        
+        let tiny = img.resize(width, height, imageops::FilterType::Triangle);
+        let blurred = tiny.blur(3.0);
+        
+        if let Some(parent) = output_path.parent() {
+            create_directory_safely(parent)?;
+        }
+        
+        let mut buffer = Vec::new();
+        
+        if use_webp {
+            let encoder = WebPEncoder::new_lossless(&mut buffer);
+            encoder.encode(
+                blurred.as_bytes(),
+                blurred.width(),
+                blurred.height(),
+                blurred.color().into(),
+            )?;
+        } else if output_path.extension().and_then(|e| e.to_str()) == Some("jpg") 
+            || output_path.extension().and_then(|e| e.to_str()) == Some("jpeg") 
+        {
+            let mut encoder = JpegEncoder::new_with_quality(&mut buffer, 30);
+            encoder.encode_image(&blurred)?;
+        } else { // PNG
+            let encoder = PngEncoder::new_with_quality(
+                &mut buffer,
+                image::codecs::png::CompressionType::Fast,
+                image::codecs::png::FilterType::NoFilter
+            );
+            encoder.write_image(
+                blurred.as_bytes(),
+                blurred.width(),
+                blurred.height(),
+                blurred.color().into(),
+            )?;
+        }
+        
+        fs::write(output_path, buffer)?;
+        Ok(())
+    }
+
+    fn add_lazy_loading(
+        html: &str, 
+        compress_to_webp: bool
+    ) -> String {
+        let mut modified_html = html.to_string();
+        let re = regex::Regex::new(r#"<img\s+([^>]*)src="([^"]+)"([^>]*)>"#).unwrap();
+        
+        modified_html = re.replace_all(&modified_html, |caps: &regex::Captures| {
+            let attrs_before = &caps[1];
+            let src = &caps[2];
+            let attrs_after = &caps[3];
+            
+            let src_path = Path::new(src);
+            let file_stem = src_path.file_stem().unwrap_or_default().to_string_lossy();
+            let orig_ext = src_path.extension().unwrap_or_default().to_string_lossy();
+            
+            let placeholder_path = if compress_to_webp {
+                format!("/static/lazy/{}.webp", file_stem)
+            } else {
+                format!("/static/lazy/{}.{}", file_stem, orig_ext)
+            };
+            
+            format!(
+                r#"<div class="lazy-image-container">
+                    <img {}src="{}" data-src="{}" loading="lazy" {}><img class="placeholder" src="{}" alt="loading...">
+                </div>"#,
+                attrs_before, placeholder_path, src, attrs_after, placeholder_path
+            )
+        }).to_string();
+        
+        modified_html
+    }
+
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -274,6 +441,9 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
                 let (mut html_content, toc) = markdown_to_html(md_content, entry.path());
                 
+                // Add lazy loading to images in HTML
+                html_content = add_lazy_loading(&html_content, config.images.compress_to_webp);
+                
                 if config.images.compress_to_webp {
                     html_content = html_content.replace(".jpg", ".webp").replace(".jpeg", ".webp").replace(".png", ".webp");
                 }
@@ -287,6 +457,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
                 context.insert("table_of_contents", &toc);
+                context.insert("has_images", &html_content.contains("<img"));
 
                 let rendered = tera.render("content.html", &context).map_err(|e| {
                     eprintln!(
@@ -300,7 +471,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())?;
 
                 println!(
-                    "Converting {} -> {}",
+                    "Converting {} -> {} (with lazy loading)",
                     entry.path().display(),
                     output_path.display()
                 );
@@ -332,9 +503,15 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
                         output_path.set_extension("webp");
                         fs::write(&output_path, &buffer)
-                        
                             .map_err(|e| format!("Failed to write WebP image {}: {}", output_path.display(), e))?;
-                        println!("Converting {} -> {} (WebP)", entry.path().display(), output_path.display());
+                        
+                        // Create placeholder image for lazy loading
+                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let placeholder_path = lazy_dir.join(format!("{}.webp", file_stem));
+                        create_placeholder_image(entry.path(), &placeholder_path, true)
+                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
+                        
+                        println!("Converting {} -> {} (WebP) with placeholder", entry.path().display(), output_path.display());
                     },
                     Some(ext) if ext == "jpg" || ext == "jpeg" => {
                         let img = image::open(entry.path()).map_err(|e| {
@@ -354,8 +531,15 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                                 e
                             )
                         })?;
+                        
+                        // Create placeholder image for lazy loading
+                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let placeholder_path = lazy_dir.join(format!("{}.jpg", file_stem));
+                        create_placeholder_image(entry.path(), &placeholder_path, false)
+                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
+                        
                         println!(
-                            "Compressing {} -> {} (quality: {})",
+                            "Compressing {} -> {} (quality: {}) with placeholder",
                             entry.path().display(),
                             output_path.display(),
                             quality
@@ -381,13 +565,25 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                             img.as_bytes(),
                             img.width(),
                             img.height(),
-                image::ExtendedColorType::Rgba8,
+                            image::ExtendedColorType::Rgba8,
                         )
                             .map_err(|e| format!("Failed to compress PNG {}: {}", entry.path().display(), e))?;
 
                         fs::write(&output_path, &buffer)
                             .map_err(|e| format!("Failed to write compressed image {}: {}", output_path.display(), e))?;
-                        println!("Compressing {} -> {} (quality: {})", entry.path().display(), output_path.display(), quality);
+                        
+                        // Create placeholder image for lazy loading
+                        let file_stem = output_path.file_stem().unwrap_or_default().to_string_lossy();
+                        let placeholder_path = lazy_dir.join(format!("{}.png", file_stem));
+                        create_placeholder_image(entry.path(), &placeholder_path, false)
+                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
+                        
+                        println!(
+                            "Compressing {} -> {} (quality: {}) with placeholder",
+                            entry.path().display(),
+                            output_path.display(),
+                            quality
+                        );
                     }
                     _ => {
                         fs::copy(entry.path(), &output_path)?;
@@ -436,6 +632,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("Build completed successfully!");
+    println!("Build completed successfully with lazy loading support!");
     Ok(())
 }
