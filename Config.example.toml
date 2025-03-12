@@ -5,4 +5,3 @@ preset = "catppuccin"
 [images]
 # quality = 25
 compress_to_webp = true
-lazy_loading = true
