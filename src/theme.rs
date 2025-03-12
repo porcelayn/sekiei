@@ -2,6 +2,7 @@ use crate::{config::{Config, ThemeType, get_preset_themes}, file_ops::safely_wri
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
 use std::error::Error;
 use std::path::Path;
+use colored::Colorize;
 
 pub fn generate_theme_css(config: &Config, theme_css_path: &Path) -> Result<(), Box<dyn Error>> {
     let required_vars = vec![
@@ -77,8 +78,9 @@ pub fn generate_theme_css(config: &Config, theme_css_path: &Path) -> Result<(), 
     safely_write_file(theme_css_path, &minified_theme_css)?;
 
     println!(
-        "Generated and minified theme.css with {} theme",
-        config.theme.theme_type.as_str()
+        "{} theme.css with {} theme",
+        "Generated and minified".green(),
+        config.theme.theme_type.as_str().yellow()
     );
     Ok(())
 }

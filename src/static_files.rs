@@ -5,6 +5,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
 use minify_js::{Session, TopLevelMode, minify as js_minify};
+use colored::Colorize;
 
 pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
     let static_dir = Path::new("static");
@@ -22,9 +23,10 @@ pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
                             .minify(&css_content, CssLevel::Three).expect("Failed to minify CSS");
                         safely_write_file(&output_path, &minified_css)?;
                         println!(
-                            "Copying and minifying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
+                            "{} {} -> {}",
+                            "Copying and minifying".green(),
+                            entry.path().display().to_string().yellow(),
+                            output_path.display().to_string().yellow()
                         );
                     }
                     Some("js") => {
@@ -39,24 +41,26 @@ pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
                         ).expect("Failed to minify JS");
                         fs::write(&output_path, &minified_js)?;
                         println!(
-                            "Copying and minifying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
+                            "{} {} -> {}",
+                            "Copying and minifying".green(),
+                            entry.path().display().to_string().yellow(),
+                            output_path.display().to_string().yellow()
                         );
                     }
                     _ => {
                         fs::copy(entry.path(), &output_path)?;
                         println!(
-                            "Copying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
+                            "{} {} -> {}",
+                            "Copying".green(),
+                            entry.path().display().to_string().yellow(),
+                            output_path.display().to_string().yellow()
                         );
                     }
                 }
             }
         }
     } else {
-        println!("No static folder found, skipping static file copy.");
+        println!("{}", "No static folder found, skipping static file copy.".yellow());
     }
     Ok(())
 }

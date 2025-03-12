@@ -8,6 +8,7 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 use walkdir::DirEntry;
+use colored::Colorize;
 
 pub fn create_placeholder_image(
     img_path: &Path,
@@ -91,9 +92,10 @@ pub fn process_content_images(
             create_placeholder_image(entry.path(), &placeholder_path, true)?;
 
             println!(
-                "Converting {} -> {} (WebP) with placeholder",
-                entry.path().display(),
-                output_path.display()
+                "{} {} -> {} (WebP) with placeholder",
+                "Converting".green(),
+                entry.path().display().to_string().yellow(),
+                output_path.display().to_string().yellow()
             );
         }
         Some(ext) if ext == "jpg" || ext == "jpeg" => {
@@ -110,10 +112,11 @@ pub fn process_content_images(
             create_placeholder_image(entry.path(), &placeholder_path, false)?;
 
             println!(
-                "Compressing {} -> {} (quality: {}) with placeholder",
-                entry.path().display(),
-                output_path.display(),
-                quality
+                "{} {} -> {} (quality: {}) with placeholder",
+                "Compressing".green(),
+                entry.path().display().to_string().yellow(),
+                output_path.display().to_string().yellow(),
+                quality.to_string().cyan()
             );
         }
         Some(ext) if ext == "png" => {
@@ -145,18 +148,20 @@ pub fn process_content_images(
             create_placeholder_image(entry.path(), &placeholder_path, false)?;
 
             println!(
-                "Compressing {} -> {} (quality: {}) with placeholder",
-                entry.path().display(),
-                output_path.display(),
-                quality
+                "{} {} -> {} (quality: {}) with placeholder",
+                "Compressing".green(),
+                entry.path().display().to_string().yellow(),
+                output_path.display().to_string().yellow(),
+                quality.to_string().cyan()
             );
         }
         _ => {
             fs::copy(entry.path(), &output_path)?;
             println!(
-                "Copying {} -> {}",
-                entry.path().display(),
-                output_path.display()
+                "{} {} -> {}",
+                "Copying".green(),
+                entry.path().display().to_string().yellow(),
+                output_path.display().to_string().yellow()
             );
         }
     }

@@ -15,9 +15,11 @@ use std::path::Path;
 use tera::Tera;
 use walkdir::WalkDir;
 use minify_html::minify;
+use colored::Colorize;
 
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
+    println!("{}", "Starting build process...".cyan());
     clear_directory_safely(dist)?;
     create_directory_safely(dist)?;
     let dist_static = dist.join("static");
@@ -40,9 +42,9 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     process_static_files(&dist_static)?;
 
-    println!("Loading Templates defined in templates/");
+    println!("{}", "Loading Templates defined in templates".blue());
     let tera = Tera::new("templates/**/*").map_err(|e| {
-        eprintln!("Error loading templates: {}", e);
+        eprintln!("{}", format!("Error loading templates: {}", e).red());
         Box::new(e) as Box<dyn Error>
     })?;
 
@@ -52,7 +54,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         ..Default::default()
     };
 
-    println!("Loading Markdown files from content");
+    println!("{}", "Loading Markdown files from content".blue());
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -99,9 +101,10 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
                 println!(
-                    "Converting {} -> {} (with lazy loading)",
-                    entry.path().display(),
-                    output_path.display()
+                    "{} {} -> {} (with lazy loading)",
+                    "Converting".green(),
+                    entry.path().display().to_string().yellow(),
+                    output_path.display().to_string().yellow()
                 );
             } else {
                 process_content_images(&entry, &dist_static, &lazy_dir, &config)?;
@@ -129,13 +132,14 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             )?;
 
             println!(
-                "Creating listing for {} -> {}",
-                entry.path().display(),
-                output_dir.display()
+                "{} {} -> {}",
+                "Creating listing for".green(),
+                entry.path().display().to_string().yellow(),
+                output_dir.display().to_string().yellow()
             );
         }
     }
 
-    println!("Build completed successfully!");
+    println!("{}", "Build completed successfully with lazy loading support!".green().bold());
     Ok(())
 }

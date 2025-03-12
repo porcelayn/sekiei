@@ -4,6 +4,7 @@ use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
 use std::path::Path;
 use regex;
+use colored::Colorize;
 
 pub fn setup_lazy_loading(dist_static: &Path) -> Result<(), Box<dyn Error>> {
     let lazy_loading_js = r#"
@@ -88,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .minify(&lazy_loading_css, CssLevel::Three)?;
     safely_write_file(&dist_static.join("lazyload.css"), &minified_css)?;
 
-    println!("Generated and minified lazyload.js and lazyload.css");
+    println!("{}", "Generated and minified lazyload.js and lazyload.css".green());
     Ok(())
 }
 
