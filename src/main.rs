@@ -6,6 +6,10 @@ mod markdown;
 mod paths;
 mod serve;
 mod utils;
+mod images;
+mod static_files;
+mod theme;
+mod lazy_load;
 
 use clap::{Parser, Subcommand};
 use std::error::Error;

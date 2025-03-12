@@ -1,22 +1,20 @@
-use crate::config::{Config, ThemeType, get_preset_themes};
 use crate::{
+    config::Config,
     file_ops::{clear_directory_safely, create_directory_safely, safely_write_file},
     listing::create_listing,
     markdown::{extract_frontmatter, markdown_to_html},
     utils::is_not_hidden_dir,
+    theme::generate_theme_css,
+    static_files::process_static_files,
+    images::process_content_images,
+    lazy_load::{add_lazy_loading, setup_lazy_loading},
 };
-use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
-use image::{
-    self, ImageEncoder, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder,
-    codecs::webp::WebPEncoder, imageops,
-};
-use minify_html::minify;
-use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use tera::Tera;
 use walkdir::WalkDir;
+use minify_html::minify;
 
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
@@ -30,268 +28,17 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     let config_str = fs::read_to_string("Config.toml")
         .map_err(|e| format!("Failed to read Config.toml: {}", e))?;
-    let config: Config =
-        toml::from_str(&config_str).map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
-    config
-        .images
-        .validate()
+    let config: Config = toml::from_str(&config_str)
+        .map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
+    config.images.validate()
         .map_err(|e| format!("Invalid [images] configuration: {}", e))?;
 
-    let required_vars = vec![
-        "background_color",
-        "text_color",
-        "link_color",
-        "heading_color",
-        "code_background",
-        "code_text",
-        "border_color",
-        "accent_color",
-        "blockquote_color",
-        "secondary_background",
-        "secondary_accent",
-        "highlight_add",
-        "highlight_del",
-        "highlight",
-        "type",
-        "constant",
-        "string",
-        "comment",
-        "keyword",
-        "function",
-        "variable",
-        "punctuation",
-        "markup_heading",
-        "diff_plus",
-        "diff_minus",
-        "attribute",
-        "constructor",
-        "tag",
-        "escape",
-    ];
-
-    let (light_vars, dark_vars) = match config.theme.theme_type {
-        ThemeType::Preset => {
-            let preset_name = config
-                .theme
-                .preset
-                .ok_or("Preset name not specified in Config.toml")?;
-            let presets = get_preset_themes();
-            presets
-                .get(&preset_name)
-                .ok_or_else(|| format!("Unknown preset theme: {}", preset_name))?
-                .clone()
-        }
-        ThemeType::Custom => {
-            let custom = config
-                .theme
-                .custom
-                .ok_or("Custom theme not specified in Config.toml")?;
-            (custom.light, custom.dark)
-        }
-    };
-
-    for var in &required_vars {
-        if !light_vars.contains_key(*var) {
-            return Err(format!("Missing light theme variable: {}", var).into());
-        }
-        if !dark_vars.contains_key(*var) {
-            return Err(format!("Missing dark theme variable: {}", var).into());
-        }
-    }
-
-    let mut light_css = String::new();
-    for (key, value) in &light_vars {
-        let css_key = format!("--{}", key.replace("_", "-"));
-        light_css.push_str(&format!("    {}: {};\n", css_key, value));
-    }
-    let mut dark_css = String::new();
-    for (key, value) in &dark_vars {
-        let css_key = format!("--{}", key.replace("_", "-"));
-        dark_css.push_str(&format!("    {}: {};\n", css_key, value));
-    }
-    let theme_css = format!(
-        r#"
-:root {{
-{light_css}
-}}
-
-@media (prefers-color-scheme: dark) {{
-    :root:not([data-theme="light"]) {{
-{dark_css}
-    }}
-}}
-
-[data-theme="light"] {{
-{light_css}
-}}
-
-[data-theme="dark"] {{
-{dark_css}
-}}
-"#,
-        light_css = light_css,
-        dark_css = dark_css
-    );
-
-    let minified_theme_css = CssMinifier::default()
-        .minify(&theme_css, CssLevel::Three)
-        .map_err(|e| format!("Failed to minify theme.css: {}", e))?;
     let theme_css_path = dist_static.join("theme.css");
-    safely_write_file(&theme_css_path, &minified_theme_css)?;
+    generate_theme_css(&config, &theme_css_path)?;
 
-    println!(
-        "Generated and minified theme.css with {} theme",
-        config.theme.theme_type.as_str()
-    );
+    setup_lazy_loading(&dist_static)?;
 
-    let lazy_loading_js = r#"
-document.addEventListener('DOMContentLoaded', () => {
-    const lazyImages = document.querySelectorAll('img[data-src]');
-    
-    const lazyLoadOptions = {
-        root: null,
-        rootMargin: '200px 0px 0px 0px', 
-        threshold: 0.1
-    };
-    
-    const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                img.src = img.dataset.src;
-                
-                img.onload = () => {
-                    img.classList.add('loaded');
-                    img.removeAttribute('data-src');
-                    
-                    const container = img.closest('.lazy-image-container');
-                    if (container) {
-                        const placeholder = container.querySelector('img.placeholder');
-                        if (placeholder) {
-                            placeholder.remove();
-                        }
-                    }
-                };
-                
-                observer.unobserve(img);
-            }
-        });
-    }, lazyLoadOptions);
-    
-    lazyImages.forEach(image => {
-        lazyLoadObserver.observe(image);
-    });
-});
-"#;
-
-    let lazy_loading_css = r#"
-.lazy-image-container {
-    position: relative;
-    overflow: hidden;
-}
-
-.lazy-image-container img.placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 1;
-    opacity: 1;
-}
-
-.lazy-image-container img.loaded {
-    filter: blur(0);
-}
-
-.lazy-image-container img.loaded + img.placeholder {
-    opacity: 0;
-}
-"#;
-
-    let js_session = Session::new();
-    let mut minified_js = Vec::new();
-    js_minify(
-        &js_session,
-        TopLevelMode::Global,
-        lazy_loading_js.as_bytes(),
-        &mut minified_js,
-    )
-    .map_err(|e| format!("Failed to minify lazyload.js: {}", e))?;
-    safely_write_file(
-        &dist_static.join("lazyload.js"),
-        std::str::from_utf8(&minified_js)?,
-    )?;
-    let minified_css = CssMinifier::default()
-        .minify(&lazy_loading_css, CssLevel::Three)
-        .map_err(|e| format!("Failed to minify lazyload.css: {}", e))?;
-    safely_write_file(&dist_static.join("lazyload.css"), &minified_css)?;
-
-    println!("Generated and minified lazyload.js and lazyload.css");
-
-    let static_dir = Path::new("static");
-    if static_dir.exists() {
-        for entry in WalkDir::new(static_dir).into_iter().filter_map(|e| e.ok()) {
-            if entry.path().is_file() {
-                let relative_path = entry.path().strip_prefix(static_dir)?;
-                let output_path = dist_static.join(relative_path);
-                create_directory_safely(output_path.parent().unwrap())?;
-
-                match entry.path().extension().and_then(|s| s.to_str()) {
-                    Some("css") => {
-                        let css_content = fs::read_to_string(entry.path()).map_err(|e| {
-                            format!("Failed to read {}: {}", entry.path().display(), e)
-                        })?;
-                        let minified_css = CssMinifier::default()
-                            .minify(&css_content, CssLevel::Three)
-                            .map_err(|e| {
-                                format!("Failed to minify {}: {}", entry.path().display(), e)
-                            })?;
-                        safely_write_file(&output_path, &minified_css)?;
-                        println!(
-                            "Copying and minifying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
-                        );
-                    }
-                    Some("js") => {
-                        let js_content = fs::read(entry.path()).map_err(|e| {
-                            format!("Failed to read {}: {}", entry.path().display(), e)
-                        })?;
-                        let mut minified_js = Vec::new();
-                        js_minify(
-                            &js_session,
-                            TopLevelMode::Global,
-                            &js_content,
-                            &mut minified_js,
-                        )
-                        .map_err(|e| {
-                            format!("Failed to minify {}: {}", entry.path().display(), e)
-                        })?;
-                        fs::write(&output_path, &minified_js).map_err(|e| {
-                            format!("Failed to write minified {}: {}", output_path.display(), e)
-                        })?;
-                        println!(
-                            "Copying and minifying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
-                        );
-                    }
-                    _ => {
-                        fs::copy(entry.path(), &output_path)?;
-                        println!(
-                            "Copying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
-                        );
-                    }
-                }
-            }
-        }
-    } else {
-        println!("No static folder found, skipping static file copy.");
-    }
+    process_static_files(&dist_static)?;
 
     println!("Loading Templates defined in templates/");
     let tera = Tera::new("templates/**/*").map_err(|e| {
@@ -306,124 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     println!("Loading Markdown files from content");
-    let mut markdown_files = Vec::new();
-    let mut directories = Vec::new();
-
-    for entry in WalkDir::new("content")
-        .into_iter()
-        .filter_entry(is_not_hidden_dir)
-        .filter_map(|e| e.ok())
-    {
-        let file_name = entry.file_name().to_string_lossy();
-        if file_name.starts_with(".") {
-            continue;
-        }
-        if entry.path().is_file() && entry.path().extension().and_then(|s| s.to_str()) == Some("md")
-        {
-            markdown_files.push(entry.path().to_path_buf());
-        } else if entry.path().is_dir() && entry.path() != Path::new("content") {
-            directories.push(entry.path().to_path_buf());
-        }
-    }
-
-    for md_path in &markdown_files {
-        let md_stem = md_path.file_stem().unwrap().to_string_lossy();
-        let md_parent = md_path.parent().unwrap();
-
-        for dir_path in &directories {
-            let dir_name = dir_path.file_name().unwrap().to_string_lossy();
-            let dir_parent = dir_path.parent().unwrap();
-
-            if md_parent == dir_parent && md_stem == dir_name {
-                return Err(format!(
-                    "Naming conflict detected: Markdown file '{}.md' and directory '{}' have the same name at '{}'. Please use different names.",
-                    md_stem, dir_name, md_parent.display()
-                ).into());
-            }
-        }
-    }
-
-    fn create_placeholder_image(
-        img_path: &Path,
-        output_path: &Path,
-        use_webp: bool,
-    ) -> Result<(), Box<dyn Error>> {
-        let img = image::open(img_path)?;
-
-        let width = 20;
-        let height = (img.height() as f32 * (width as f32 / img.width() as f32)) as u32;
-
-        let tiny = img.resize(width, height, imageops::FilterType::Triangle);
-        let blurred = tiny.blur(3.0);
-
-        if let Some(parent) = output_path.parent() {
-            create_directory_safely(parent)?;
-        }
-
-        let mut buffer = Vec::new();
-
-        if use_webp {
-            let encoder = WebPEncoder::new_lossless(&mut buffer);
-            encoder.encode(
-                blurred.as_bytes(),
-                blurred.width(),
-                blurred.height(),
-                blurred.color().into(),
-            )?;
-        } else if output_path.extension().and_then(|e| e.to_str()) == Some("jpg")
-            || output_path.extension().and_then(|e| e.to_str()) == Some("jpeg")
-        {
-            let mut encoder = JpegEncoder::new_with_quality(&mut buffer, 30);
-            encoder.encode_image(&blurred)?;
-        } else {
-            // PNG
-            let encoder = PngEncoder::new_with_quality(
-                &mut buffer,
-                image::codecs::png::CompressionType::Fast,
-                image::codecs::png::FilterType::NoFilter,
-            );
-            encoder.write_image(
-                blurred.as_bytes(),
-                blurred.width(),
-                blurred.height(),
-                blurred.color().into(),
-            )?;
-        }
-
-        fs::write(output_path, buffer)?;
-        Ok(())
-    }
-
-    fn add_lazy_loading(html: &str, compress_to_webp: bool) -> String {
-        let mut modified_html = html.to_string();
-        let re = regex::Regex::new(r#"<img\s+([^>]*)src="([^"]+)"([^>]*)>"#).unwrap();
-
-        modified_html = re.replace_all(&modified_html, |caps: &regex::Captures| {
-            let attrs_before = &caps[1];
-            let src = &caps[2];
-            let attrs_after = &caps[3];
-            
-            let src_path = Path::new(src);
-            let file_stem = src_path.file_stem().unwrap_or_default().to_string_lossy();
-            let orig_ext = src_path.extension().unwrap_or_default().to_string_lossy();
-            
-            let placeholder_path = if compress_to_webp {
-                format!("/static/lazy/{}.webp", file_stem)
-            } else {
-                format!("/static/lazy/{}.{}", file_stem, orig_ext)
-            };
-            
-            format!(
-                r#"<div class="lazy-image-container">
-                    <img {}src="{}" data-src="{}" loading="lazy" {}><img class="placeholder" src="{}" alt="loading...">
-                </div>"#,
-                attrs_before, placeholder_path, src, attrs_after, placeholder_path
-            )
-        }).to_string();
-
-        modified_html
-    }
-
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -448,8 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 let content = fs::read_to_string(entry.path())?;
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
                 let (mut html_content, toc) = markdown_to_html(md_content, entry.path());
-
-                // Add lazy loading to images in HTML
                 html_content = add_lazy_loading(&html_content, config.images.compress_to_webp);
 
                 if config.images.compress_to_webp {
@@ -460,26 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 let mut context = tera::Context::new();
-                let title = frontmatter["title"]
-                    .as_str()
-                    .unwrap_or("Untitled")
-                    .to_string();
+                let title = frontmatter["title"].as_str().unwrap_or("Untitled").to_string();
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
                 context.insert("table_of_contents", &toc);
                 context.insert("has_images", &html_content.contains("<img"));
 
-                let rendered = tera.render("content.html", &context).map_err(|e| {
-                    eprintln!(
-                        "Error rendering template for {}: {}",
-                        entry.path().display(),
-                        e
-                    );
-                    e
-                })?;
+                let rendered = tera.render("content.html", &context)?;
                 let minified = minify(rendered.as_bytes(), &minify_cfg);
-                safely_write_file(&output_path, String::from_utf8(minified).unwrap().as_str())?;
+                safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
                 println!(
                     "Converting {} -> {} (with lazy loading)",
@@ -487,162 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     output_path.display()
                 );
             } else {
-                let relative_path = entry.path().strip_prefix("content")?;
-                let sanitized_name =
-                    crate::utils::sanitize_filename(&relative_path.to_string_lossy());
-                let mut output_path = dist_static.join(&sanitized_name);
-                create_directory_safely(output_path.parent().unwrap())?;
-
-                match entry
-                    .path()
-                    .extension()
-                    .and_then(|s| s.to_str().map(|s| s.to_lowercase()))
-                {
-                    Some(ext)
-                        if (ext == "jpg" || ext == "jpeg" || ext == "png")
-                            && config.images.compress_to_webp =>
-                    {
-                        let img = image::open(entry.path()).map_err(|e| {
-                            format!("Failed to open image {}: {}", entry.path().display(), e)
-                        })?;
-                        let rgba_img = img.to_rgba8(); // Convert to RGBA explicitly
-                        let mut buffer = Vec::new();
-                        let encoder = WebPEncoder::new_lossless(&mut buffer);
-                        encoder
-                            .encode(
-                                rgba_img.as_raw(),
-                                rgba_img.width(),
-                                rgba_img.height(),
-                                image::ExtendedColorType::Rgba8,
-                            )
-                            .map_err(|e| {
-                                format!(
-                                    "Failed to encode WebP image {}: {}",
-                                    entry.path().display(),
-                                    e
-                                )
-                            })?;
-
-                        output_path.set_extension("webp");
-                        fs::write(&output_path, &buffer).map_err(|e| {
-                            format!(
-                                "Failed to write WebP image {}: {}",
-                                output_path.display(),
-                                e
-                            )
-                        })?;
-
-                        // Create placeholder image for lazy loading
-                        let file_stem = output_path
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_string_lossy();
-                        let placeholder_path = lazy_dir.join(format!("{}.webp", file_stem));
-                        create_placeholder_image(entry.path(), &placeholder_path, true)
-                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-
-                        println!(
-                            "Converting {} -> {} (WebP) with placeholder",
-                            entry.path().display(),
-                            output_path.display()
-                        );
-                    }
-                    Some(ext) if ext == "jpg" || ext == "jpeg" => {
-                        let img = image::open(entry.path()).map_err(|e| {
-                            format!("Failed to open image {}: {}", entry.path().display(), e)
-                        })?;
-                        let quality = config.images.quality.min(100);
-                        let mut buffer = Vec::new();
-                        let mut encoder = JpegEncoder::new_with_quality(&mut buffer, quality);
-                        encoder.encode_image(&img).map_err(|e| {
-                            format!("Failed to compress JPEG {}: {}", entry.path().display(), e)
-                        })?;
-
-                        fs::write(&output_path, &buffer).map_err(|e| {
-                            format!(
-                                "Failed to write compressed image {}: {}",
-                                output_path.display(),
-                                e
-                            )
-                        })?;
-
-                        // Create placeholder image for lazy loading
-                        let file_stem = output_path
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_string_lossy();
-                        let placeholder_path = lazy_dir.join(format!("{}.jpg", file_stem));
-                        create_placeholder_image(entry.path(), &placeholder_path, false)
-                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-
-                        println!(
-                            "Compressing {} -> {} (quality: {}) with placeholder",
-                            entry.path().display(),
-                            output_path.display(),
-                            quality
-                        );
-                    }
-                    Some(ext) if ext == "png" => {
-                        let img = image::open(entry.path()).map_err(|e| {
-                            format!("Failed to open image {}: {}", entry.path().display(), e)
-                        })?;
-                        let quality = config.images.quality.min(100); // Cap at 100
-                        let mut buffer = Vec::new();
-                        let compression = match quality {
-                            0..=33 => image::codecs::png::CompressionType::Fast,
-                            34..=66 => image::codecs::png::CompressionType::Default,
-                            67..=100 => image::codecs::png::CompressionType::Best,
-                            _ => unreachable!("Quality capped at 100"),
-                        };
-                        let encoder = PngEncoder::new_with_quality(
-                            &mut buffer,
-                            compression,
-                            image::codecs::png::FilterType::NoFilter,
-                        );
-                        encoder
-                            .write_image(
-                                img.as_bytes(),
-                                img.width(),
-                                img.height(),
-                                image::ExtendedColorType::Rgba8,
-                            )
-                            .map_err(|e| {
-                                format!("Failed to compress PNG {}: {}", entry.path().display(), e)
-                            })?;
-
-                        fs::write(&output_path, &buffer).map_err(|e| {
-                            format!(
-                                "Failed to write compressed image {}: {}",
-                                output_path.display(),
-                                e
-                            )
-                        })?;
-
-                        // Create placeholder image for lazy loading
-                        let file_stem = output_path
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_string_lossy();
-                        let placeholder_path = lazy_dir.join(format!("{}.png", file_stem));
-                        create_placeholder_image(entry.path(), &placeholder_path, false)
-                            .map_err(|e| format!("Failed to create placeholder image: {}", e))?;
-
-                        println!(
-                            "Compressing {} -> {} (quality: {}) with placeholder",
-                            entry.path().display(),
-                            output_path.display(),
-                            quality
-                        );
-                    }
-                    _ => {
-                        fs::copy(entry.path(), &output_path)?;
-                        println!(
-                            "Copying {} -> {}",
-                            entry.path().display(),
-                            output_path.display()
-                        );
-                    }
-                }
+                process_content_images(&entry, &dist_static, &lazy_dir, &config)?;
             }
         } else if entry.path().is_dir() && entry.path().display().to_string() != "content" {
             let file_name = entry.file_name().to_string_lossy();
@@ -659,18 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
             context.insert("items", &items);
             context.insert("dir_path", &relative_path);
             context.insert("compress_to_webp", &config.images.compress_to_webp);
-            let rendered = tera.render("listing.html", &context).map_err(|e| {
-                eprintln!(
-                    "Error rendering template for {}: {}",
-                    entry.path().display(),
-                    e
-                );
-                e
-            })?;
+            let rendered = tera.render("listing.html", &context)?;
             let minified = minify(rendered.as_bytes(), &minify_cfg);
             safely_write_file(
                 &output_dir.join("index.html"),
-                String::from_utf8(minified).unwrap().as_str(),
+                String::from_utf8(minified)?.as_str(),
             )?;
 
             println!(
@@ -681,6 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    println!("Build completed successfully with lazy loading support!");
+    println!("Build completed successfully!");
     Ok(())
 }
