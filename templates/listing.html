@@ -1,10 +1,20 @@
-{%extends "base.html"%}
-{%block title%} Contents of {{ dir_path }} {%endblock title%}
+{% extends "base.html" %}
+{% block title %}Contents of {{ dir_path }}{% endblock title %}
 {% block content %}
-    <h1 class="text-2xl md:text-3xl font-bold mb-4">Contents of {{ dir_path }}</h1>
-    <ul class="list-disc pl-5">
-        {% for item in items %}
-            <li><a href="{{ item.url }}">{{ item.name }}</a></li>
-        {% endfor %}
-    </ul>
+<ul>
+{% for item in items %}
+  {% set ext = item.name|lower|split(pat=".")|last %}
+  {% if ext == "jpg" or ext == "jpeg" or ext == "png" %}
+    <li>
+      {% if compress_to_webp %}
+        <a href="/static/{{ item.name|replace(from='.jpg', to='.webp')|replace(from='.jpeg', to='.webp')|replace(from='.png', to='.webp') }}">{{ item.name }}</a>
+      {% else %}
+        <a href="/static/{{ item.name }}">{{ item.name }}</a>
+      {% endif %}
+    </li>
+  {% else %}
+    <li><a href="{{ item.url }}">{{ item.name }}</a></li>
+  {% endif %}
+{% endfor %}
+</ul>
 {% endblock content %}

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -31,14 +31,25 @@ pub struct Config {
     pub images: ImagesConfig, 
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Serialize)]
 pub struct ImagesConfig {
     #[serde(default = "default_quality")]
     pub quality: u8,
+    #[serde(default)]
+    pub compress_to_webp: bool,
+}
+
+impl ImagesConfig {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.quality != default_quality() && self.compress_to_webp {
+            return Err("Fields 'quality' and 'compress_to_webp' cannot be set at the same time in [images]".to_string());
+        }
+        Ok(())
+    }
 }
 
 fn default_quality() -> u8 {
-    100 
+    100
 }
 
 #[derive(Deserialize)]

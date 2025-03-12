@@ -6,7 +6,7 @@ use crate::{
     utils::is_not_hidden_dir,
 };
 use css_minify::optimizations::{Level as CssLevel, Minifier as CssMinifier};
-use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, ImageEncoder};
+use image::{self, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder, codecs::webp::WebPEncoder, ImageEncoder};
 use minify_html::minify;
 use minify_js::{Session, TopLevelMode, minify as js_minify};
 use std::error::Error;
@@ -26,6 +26,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         .map_err(|e| format!("Failed to read Config.toml: {}", e))?;
     let config: Config =
         toml::from_str(&config_str).map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
+    config.images.validate().map_err(|e| format!("Invalid [images] configuration: {}", e))?;
 
     let required_vars = vec![
         "background_color",
@@ -271,7 +272,11 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
                 let content = fs::read_to_string(entry.path())?;
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
-                let (html_content, toc) = markdown_to_html(md_content, entry.path());
+                let (mut html_content, toc) = markdown_to_html(md_content, entry.path());
+                
+                if config.images.compress_to_webp {
+                    html_content = html_content.replace(".jpg", ".webp").replace(".jpeg", ".webp").replace(".png", ".webp");
+                }
 
                 let mut context = tera::Context::new();
                 let title = frontmatter["title"]
@@ -303,7 +308,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 let relative_path = entry.path().strip_prefix("content")?;
                 let sanitized_name =
                     crate::utils::sanitize_filename(&relative_path.to_string_lossy());
-                let output_path = dist_static.join(&sanitized_name);
+                let mut output_path = dist_static.join(&sanitized_name);
                 create_directory_safely(output_path.parent().unwrap())?;
 
                 match entry
@@ -311,6 +316,26 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     .extension()
                     .and_then(|s| s.to_str().map(|s| s.to_lowercase()))
                 {
+                    Some(ext) if (ext == "jpg" || ext == "jpeg" || ext == "png") && config.images.compress_to_webp => {
+                        let img = image::open(entry.path())
+                            .map_err(|e| format!("Failed to open image {}: {}", entry.path().display(), e))?;
+                        let rgba_img = img.to_rgba8(); // Convert to RGBA explicitly
+                        let mut buffer = Vec::new();
+                        let encoder = WebPEncoder::new_lossless(&mut buffer);
+                        encoder.encode(
+                            rgba_img.as_raw(),
+                            rgba_img.width(),
+                            rgba_img.height(),
+                            image::ExtendedColorType::Rgba8 
+                        )
+                            .map_err(|e| format!("Failed to encode WebP image {}: {}", entry.path().display(), e))?;
+
+                        output_path.set_extension("webp");
+                        fs::write(&output_path, &buffer)
+                        
+                            .map_err(|e| format!("Failed to write WebP image {}: {}", output_path.display(), e))?;
+                        println!("Converting {} -> {} (WebP)", entry.path().display(), output_path.display());
+                    },
                     Some(ext) if ext == "jpg" || ext == "jpeg" => {
                         let img = image::open(entry.path()).map_err(|e| {
                             format!("Failed to open image {}: {}", entry.path().display(), e)
@@ -337,7 +362,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                         );
                     }
                     Some(ext) if ext == "png" => {
-let img = image::open(entry.path())
+                        let img = image::open(entry.path())
                             .map_err(|e| format!("Failed to open image {}: {}", entry.path().display(), e))?;
                         let quality = config.images.quality.min(100); // Cap at 100
                         let mut buffer = Vec::new();
@@ -388,7 +413,7 @@ let img = image::open(entry.path())
             let mut context = tera::Context::new();
             context.insert("items", &items);
             context.insert("dir_path", &relative_path);
-
+            context.insert("compress_to_webp", &config.images.compress_to_webp);
             let rendered = tera.render("listing.html", &context).map_err(|e| {
                 eprintln!(
                     "Error rendering template for {}: {}",
