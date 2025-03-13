@@ -4,6 +4,7 @@ use image::{
     self, ImageEncoder, codecs::jpeg::JpegEncoder, codecs::png::PngEncoder,
     codecs::webp::WebPEncoder, imageops,
 };
+use crate::paths::STATIC_FILE_MAP;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -70,6 +71,9 @@ pub fn process_content_images(
     let sanitized_name = crate::utils::sanitize_filename(&relative_path.to_string_lossy());
     let mut output_path = dist_static.join(&sanitized_name);
     create_directory_safely(output_path.parent().unwrap())?;
+
+    let mut map = STATIC_FILE_MAP.lock().unwrap();
+    map.insert(sanitized_name.clone(), entry.path().to_path_buf());
 
     match entry.path().extension().and_then(|s| s.to_str().map(|s| s.to_lowercase())) {
         Some(ext) if (ext == "jpg" || ext == "jpeg" || ext == "png") && config.images.compress_to_webp => {

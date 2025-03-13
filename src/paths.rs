@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
     sync::RwLock,
 };
+use std::sync::Mutex;
 use walkdir::WalkDir;
 
 use crate::utils::sanitize_filename;
@@ -15,6 +16,7 @@ lazy_static! {
     static ref ALT_IMAGE_REGEX: Regex = Regex::new(r"!\[\[([^|\]]+)(?:\|([^\]]*))?\]\]").unwrap();
     static ref LINK_REGEX: Regex = Regex::new(r"\[\[([^|\]]+)(?:\|([^\]]*))?\]\]").unwrap();
     static ref WIKI_LINK_REGEX: Regex = Regex::new(r"\[(.*?)\]\(wiki:([^)]+)\)").unwrap();
+    pub static ref STATIC_FILE_MAP: Mutex<HashMap<String, PathBuf>> = Mutex::new(HashMap::new());
 }
 
 pub fn init_file_cache() {
@@ -197,14 +199,12 @@ pub fn find_unique_internal_link(link_name: &str) -> String {
     let cache = FILE_CACHE.read().unwrap();
     if let Some(file_map) = &*cache {
         if let Some(matches) = file_map.get(link_name) {
-            match matches.len() {
-                0 => get_internal_link_path(link_name),
-                _ => {
-                    let match_path = matches
-                        .iter()
-                        .find(|p| p.to_string_lossy().ends_with(".md"))
-                        .unwrap_or(&matches[0]);
-
+            let match_path = matches
+                .iter()
+                .find(|p| p.to_string_lossy().ends_with(".md"))
+                .or_else(|| matches.first());
+            if let Some(match_path) = match_path {
+                if match_path.to_string_lossy().ends_with(".md") {
                     let path = match_path
                         .strip_prefix("content")
                         .unwrap_or(match_path)
@@ -215,7 +215,13 @@ pub fn find_unique_internal_link(link_name: &str) -> String {
                     } else {
                         format!("/{}", clean_path)
                     }
+                } else {
+                    let relative_path = match_path.strip_prefix("content").unwrap_or(match_path);
+                    let sanitized_name = sanitize_filename(&relative_path.to_string_lossy());
+                    format!("/static/{}", sanitized_name)
                 }
+            } else {
+                get_internal_link_path(link_name)
             }
         } else {
             get_internal_link_path(link_name)

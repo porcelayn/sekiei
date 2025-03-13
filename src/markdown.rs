@@ -1,4 +1,4 @@
-use crate::paths::{process_paths, process_wiki_parenthetical_links};
+use crate::paths::{process_paths, process_wiki_parenthetical_links, STATIC_FILE_MAP};
 use htmlescape;
 use inkjet::{Highlighter, Language, formatter};
 use lazy_static::lazy_static;
@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::path::Path;
 use std::sync::Mutex;
+use infer::Infer;
 
 #[derive(Debug, Serialize)]
 pub struct Backlink {
@@ -195,138 +196,179 @@ pub fn markdown_to_html(markdown: &str, file_path: &Path) -> (String, Vec<TOCEnt
     let mut events = Vec::new();
     let mut toc = Vec::new();
     let mut current_heading: Option<(u32, Vec<Event>)> = None;
+    let mut handling_video = false;
+    let mut alt_text = String::new();
+    let mut video_dest_url = String::new();
+    let mut video_mime_type = String::new();
 
     for event in parser {
-        match event {
-            Event::Start(Tag::Heading { level, .. }) => {
-                current_heading = Some((level as u32, Vec::new()));
+        if handling_video {
+            match event {
+                Event::Text(text) => {
+                    alt_text.push_str(&text);
+                }
+                Event::End(TagEnd::Image) => {
+                    handling_video = false;
+                    let video_html = format!(
+                        "<video controls><source src=\"{}\" type=\"{}\">{}</video>",
+                        video_dest_url,
+                        video_mime_type,
+                        htmlescape::encode_minimal(&alt_text)
+                    );
+                    events.push(Event::Html(video_html.into()));
+                    alt_text.clear();
+                }
+                _ => {}
             }
-            Event::Start(Tag::CodeBlock(kind)) => {
-                in_code_block = true;
-                let lang_info = match kind {
-                    CodeBlockKind::Fenced(lang) => lang.to_string(),
-                    _ => String::new(),
-                };
-                let (lang, filename) = extract_language_and_filename(&lang_info);
-                current_language = lang;
-                current_filename = filename;
-                current_highlighting = parse_highlighting_info(&lang_info);
-                code_content.clear();
-            }
-            Event::Text(text) if in_code_block => {
-                code_content.push_str(&text);
-            }
-            Event::End(TagEnd::CodeBlock) if in_code_block => {
-                in_code_block = false;
-                let highlighted_html = if let Some(lang_str) = current_language.as_ref() {
-                    if let Some(inkjet_lang) = get_inkjet_language(lang_str) {
-                        match highlighter.lock().unwrap().highlight_to_string(
-                            inkjet_lang,
-                            &formatter::Html,
-                            &code_content,
-                        ) {
-                            Ok(html) => html,
-                            Err(e) => {
-                                eprintln!("Error highlighting code: {}", e);
-                                htmlescape::encode_minimal(&code_content)
+        } else {
+            match event {
+                Event::Start(Tag::Heading { level, .. }) => {
+                    current_heading = Some((level as u32, Vec::new()));
+                }
+                Event::Start(Tag::CodeBlock(kind)) => {
+                    in_code_block = true;
+                    let lang_info = match kind {
+                        CodeBlockKind::Fenced(lang) => lang.to_string(),
+                        _ => String::new(),
+                    };
+                    let (lang, filename) = extract_language_and_filename(&lang_info);
+                    current_language = lang;
+                    current_filename = filename;
+                    current_highlighting = parse_highlighting_info(&lang_info);
+                    code_content.clear();
+                }
+                Event::Text(text) if in_code_block => {
+                    code_content.push_str(&text);
+                }
+                Event::End(TagEnd::CodeBlock) if in_code_block => {
+                    in_code_block = false;
+                    let highlighted_html = if let Some(lang_str) = current_language.as_ref() {
+                        if let Some(inkjet_lang) = get_inkjet_language(lang_str) {
+                            match highlighter.lock().unwrap().highlight_to_string(
+                                inkjet_lang,
+                                &formatter::Html,
+                                &code_content,
+                            ) {
+                                Ok(html) => html,
+                                Err(e) => {
+                                    eprintln!("Error highlighting code: {}", e);
+                                    htmlescape::encode_minimal(&code_content)
+                                }
                             }
+                        } else {
+                            htmlescape::encode_minimal(&code_content)
                         }
                     } else {
                         htmlescape::encode_minimal(&code_content)
-                    }
-                } else {
-                    htmlescape::encode_minimal(&code_content)
-                };
+                    };
 
-                let lines: Vec<&str> = highlighted_html.lines().collect();
-                let total_lines = lines.len();
-                let width_needed = if total_lines > 0 {
-                    total_lines.to_string().len()
-                } else {
-                    1
-                };
-                let (del_lines, add_lines, highlight_lines) = &current_highlighting;
+                    let lines: Vec<&str> = highlighted_html.lines().collect();
+                    let total_lines = lines.len();
+                    let width_needed = if total_lines > 0 {
+                        total_lines.to_string().len()
+                    } else {
+                        1
+                    };
+                    let (del_lines, add_lines, highlight_lines) = &current_highlighting;
 
-                let line_numbered_html = lines
-                    .iter()
-                    .enumerate()
-                    .map(|(i, line)| {
-                        let line_num = i + 1;
-                        let mut line_class = String::new();
-                        if del_lines.contains(&line_num) {
-                            line_class = " class=\"highlight-del\"".to_string();
-                        } else if add_lines.contains(&line_num) {
-                            line_class = " class=\"highlight-add\"".to_string();
-                        } else if highlight_lines.contains(&line_num) {
-                            line_class = " class=\"highlight\"".to_string();
-                        }
+                    let line_numbered_html = lines
+                        .iter()
+                        .enumerate()
+                        .map(|(i, line)| {
+                            let line_num = i + 1;
+                            let mut line_class = String::new();
+                            if del_lines.contains(&line_num) {
+                                line_class = " class=\"highlight-del\"".to_string();
+                            } else if add_lines.contains(&line_num) {
+                                line_class = " class=\"highlight-add\"".to_string();
+                            } else if highlight_lines.contains(&line_num) {
+                                line_class = " class=\"highlight\"".to_string();
+                            }
+                            format!(
+                                "<span{line_class}><span class=\"line-number\">{:0width$}</span><span class=\"code-line\">{}</span></span>", 
+                                line_num, 
+                                line,
+                                width = width_needed,
+                                line_class = line_class
+                            )
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n");
+
+                    let code_html = if let Some(filename) = current_filename.as_ref() {
                         format!(
-                            "<span{line_class}><span class=\"line-number\">{:0width$}</span><span class=\"code-line\">{}</span></span>", 
-                            line_num, 
-                            line,
-                            width = width_needed,
-                            line_class = line_class
+                            r#"<div class="code-block"><div class="code-header"><span class="code-filename">{}</span>  <div><span class="code-language">{}</span> <button class="copy-button" onclick="copyCode(this)">copy</button></div></div><pre><code>{}</code></pre></div>"#,
+                            filename,
+                            current_language.as_ref().unwrap().as_str(),
+                            line_numbered_html
                         )
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n");
+                    } else {
+                        format!(
+                            r#"<div class="code-block"><div class="code-header"> <div><span class="code-language">{}</span><button class="copy-button" onclick="copyCode(this)">copy</button> </div></div><pre><code>{}</code></pre></div>"#,
+                            current_language.as_ref().unwrap().as_str(),
+                            line_numbered_html
+                        )
+                    };
 
-                let code_html = if let Some(filename) = current_filename.as_ref() {
-                    format!(
-                        r#"<div class="code-block"><div class="code-header"><span class="code-filename">{}</span>  <div><span class="code-language">{}</span> <button class="copy-button" onclick="copyCode(this)">copy</button></div></div><pre><code>{}</code></pre></div>"#,
-                        filename,
-                        current_language.unwrap().as_str(),
-                        line_numbered_html
-                    )
-                } else {
-                    format!(
-                        r#"<div class="code-block"><div class="code-header"> <div><span class="code-language">{}</span><button class="copy-button" onclick="copyCode(this)">copy</button> </div></div><pre><code>{}</code></pre></div>"#,
-                        current_language.unwrap().as_str(),
-                        line_numbered_html
-                    )
-                };
+                    events.push(Event::Html(code_html.into()));
+                    current_language = None;
+                    current_filename = None;
+                    current_highlighting = (HashSet::new(), HashSet::new(), HashSet::new());
+                }
+                Event::End(TagEnd::Heading(_)) => {
+                    if let Some((level, inner_events)) = current_heading.take() {
+                        let mut text_content = String::new();
+                        for e in &inner_events {
+                            if let Event::Text(t) = e {
+                                text_content.push_str(t);
+                            }
+                        }
+                        let slug = text_content
+                            .trim()
+                            .to_lowercase()
+                            .replace(' ', "-")
+                            .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
 
-                events.push(Event::Html(code_html.into()));
-                current_language = None;
-                current_filename = None;
-                current_highlighting = (HashSet::new(), HashSet::new(), HashSet::new());
-            }
-            Event::End(TagEnd::Heading(_)) => {
-                if let Some((level, inner_events)) = current_heading.take() {
-                    let mut text_content = String::new();
-                    for e in &inner_events {
-                        if let Event::Text(t) = e {
-                            text_content.push_str(t);
+                        toc.push(TOCEntry {
+                            level,
+                            id: slug.clone(),
+                            title: text_content.clone(),
+                        });
+
+                        let mut inner_html = String::new();
+                        html::push_html(&mut inner_html, inner_events.into_iter());
+                        let heading_html =
+                            format!("<h{} id=\"{}\">{}</h{}>", level, slug, inner_html, level);
+                        events.push(Event::Html(heading_html.into()));
+                    }
+                }
+                Event::Start(Tag::Image { link_type, dest_url, title, id }) => {
+                    let sanitized_name = dest_url.strip_prefix("/static/").unwrap_or(&dest_url).to_string();
+                    let map = STATIC_FILE_MAP.lock().unwrap();
+                    if let Some(original_path) = map.get(&sanitized_name) {
+                        let infer = Infer::new();
+                        if let Ok(Some(info)) = infer.get_from_path(original_path) {
+                            println!("Found video file: {:?}", info.mime_type());
+                            if info.mime_type().starts_with("video/") {
+                                handling_video = true;
+                                video_dest_url = dest_url.to_string();
+                                video_mime_type = info.mime_type().to_string();
+                                continue; 
+                            }
                         }
                     }
-                    let slug = text_content
-                        .trim()
-                        .to_lowercase()
-                        .replace(' ', "-")
-                        .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
-
-                    toc.push(TOCEntry {
-                        level,
-                        id: slug.clone(),
-                        title: text_content.clone(),
-                    });
-
-                    let mut inner_html = String::new();
-                    html::push_html(&mut inner_html, inner_events.into_iter());
-                    let heading_html =
-                        format!("<h{} id=\"{}\">{}</h{}>", level, slug, inner_html, level);
-                    events.push(Event::Html(heading_html.into()));
+                    events.push(Event::Start(Tag::Image { link_type, dest_url, title, id }));
                 }
-            }
-            _ => {
-                if in_code_block {
-                    if let Event::Text(text) = event {
-                        code_content.push_str(&text);
+                _ => {
+                    if in_code_block {
+                        if let Event::Text(text) = event {
+                            code_content.push_str(&text);
+                        }
+                    } else if let Some((_, ref mut inner_events)) = current_heading {
+                        inner_events.push(event);
+                    } else {
+                        events.push(event);
                     }
-                } else if let Some((_, ref mut inner_events)) = current_heading {
-                    inner_events.push(event);
-                } else {
-                    events.push(event);
                 }
             }
         }
