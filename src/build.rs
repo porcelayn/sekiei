@@ -199,7 +199,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     backlinks.len().to_string().green()
                 );
 
-                let rendered = tera.render("content.html", &context)?;
+                let rendered = tera.render("content.tera", &context)?;
                 let minified = minify(rendered.as_bytes(), &minify_cfg);
                 safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
@@ -232,7 +232,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             context.insert("items", &items);
             context.insert("dir_path", &relative_path);
             context.insert("compress_to_webp", &config.images.compress_to_webp);
-            let rendered = tera.render("listing.html", &context)?;
+            let rendered = tera.render("listing.tera", &context)?;
             let minified = minify(rendered.as_bytes(), &minify_cfg);
             safely_write_file(
                 &output_dir.join("index.html"),
@@ -250,7 +250,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     println!(
         "{}",
-        "Build completed successfully with backlink support!"
+        "Build completed successfully!"
             .green()
             .bold()
     );

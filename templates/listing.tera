@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.tera" %}
 {% block title %}Contents of {{ dir_path }}{% endblock title %}
 {% block content %}
 <ul>

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.tera" %}
 {% block title %}{{ title }}{% endblock title %}
 {% block head %}
 {% if has_images %}
