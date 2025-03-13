@@ -11,6 +11,12 @@ use std::error::Error;
 use std::path::Path;
 use std::sync::Mutex;
 
+#[derive(Debug, Serialize)]
+pub struct Backlink {
+    pub title: String,
+    pub path: String,
+}
+
 lazy_static! {
     pub static ref LANGUAGE_MAP: HashMap<&'static str, Language> = {
         let mut m = HashMap::new();

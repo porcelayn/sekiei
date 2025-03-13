@@ -19,6 +19,16 @@
             </ul>
         </nav>
     {% endif %}
+    {% if backlinks and backlinks | length > 0 %}
+    <div class="backlinks">
+        <h2>Backlinks</h2>
+        <ul>
+        {% for backlink in backlinks %}
+            <li><a href="{{ backlink.path }}">{{ backlink.title }}</a></li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
     
     <article>
         <div class="markdown-content">

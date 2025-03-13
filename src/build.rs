@@ -1,21 +1,24 @@
 use crate::{
     config::Config,
     file_ops::{clear_directory_safely, create_directory_safely, safely_write_file},
-    listing::create_listing,
-    markdown::{extract_frontmatter, markdown_to_html},
-    utils::is_not_hidden_dir,
-    theme::generate_theme_css,
-    static_files::process_static_files,
     images::process_content_images,
     lazy_load::{add_lazy_loading, setup_lazy_loading},
+    listing::create_listing,
+    markdown::{Backlink, extract_frontmatter, markdown_to_html},
+    paths::{init_file_cache, process_paths},
+    static_files::process_static_files,
+    theme::generate_theme_css,
+    utils::is_not_hidden_dir,
 };
+use colored::Colorize;
+use minify_html::minify;
+use pulldown_cmark::{Event, Options, Parser, Tag};
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use tera::Tera;
 use walkdir::WalkDir;
-use minify_html::minify;
-use colored::Colorize;
 
 pub fn build() -> Result<(), Box<dyn Error>> {
     let dist = Path::new("dist");
@@ -30,9 +33,11 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     let config_str = fs::read_to_string("Config.toml")
         .map_err(|e| format!("Failed to read Config.toml: {}", e))?;
-    let config: Config = toml::from_str(&config_str)
-        .map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
-    config.images.validate()
+    let config: Config =
+        toml::from_str(&config_str).map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
+    config
+        .images
+        .validate()
         .map_err(|e| format!("Invalid [images] configuration: {}", e))?;
 
     let theme_css_path = dist_static.join("theme.css");
@@ -54,7 +59,73 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         ..Default::default()
     };
 
-    println!("{}", "Loading Markdown files from content".blue());
+    init_file_cache();
+
+    // generate backlinks in the first loop 
+    let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new(); // Changed Vec to HashSet
+    for entry in WalkDir::new("content")
+        .into_iter()
+        .filter_entry(is_not_hidden_dir)
+        .filter_map(|e| e.ok())
+    {
+        if entry.path().is_file() && entry.path().extension().and_then(|s| s.to_str()) == Some("md")
+        {
+            let content = fs::read_to_string(entry.path())?;
+            let (frontmatter, md_content) = extract_frontmatter(&content)?;
+            let source_path = entry
+                .path()
+                .strip_prefix("content")?
+                .to_string_lossy()
+                .replace('\\', "/");
+            let source_title = frontmatter["title"]
+                .as_str()
+                .unwrap_or("Untitled")
+                .to_string();
+
+            let processed_content = process_paths(md_content, entry.path());
+
+            let mut options = Options::empty();
+            options.insert(Options::ENABLE_GFM);
+            let parser = Parser::new_ext(&processed_content, options);
+
+            for event in parser {
+                if let Event::Start(Tag::Link { ref dest_url, .. }) = event {
+                    if !dest_url.starts_with("http") && !dest_url.starts_with("wiki:") {
+                        let target_path = dest_url
+                            .trim_start_matches('/')
+                            .replace('\\', "/")
+                            .replace(".md", "");
+
+                        let clean_source_path = if source_path == "index.md" {
+                            "/".to_string()
+                        } else {
+                            format!("/{}", source_path.replace(".md", ""))
+                        };
+
+                        println!(
+                            "{}: Found link from {} to {} (resolved as {})",
+                            "DEBUG".purple(),
+                            source_path.yellow(),
+                            dest_url.cyan(),
+                            target_path.green()
+                        );
+
+                        // Use insert instead of push to deduplicate
+                        backlink_map
+                            .entry(target_path)
+                            .or_insert_with(HashSet::new)
+                            .insert((source_title.clone(), clean_source_path));
+                    }
+                }
+            }
+        }
+    }
+
+    // generate pages with backlinks in the second loop
+    println!(
+        "{}",
+        "Second pass: Generating pages with backlinks...".blue()
+    );
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -67,11 +138,16 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             }
 
             if entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
-                let relative_path = entry.path().strip_prefix("content")?;
-                let output_path = if relative_path.to_string_lossy() == "index.md" {
+                let relative_path = entry
+                    .path()
+                    .strip_prefix("content")?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                let rel_path = Path::new(&relative_path);
+                let output_path = if relative_path == "index.md" {
                     dist.join("index.html")
                 } else {
-                    let output_dir = dist.join(relative_path.with_extension(""));
+                    let output_dir = dist.join(rel_path.with_extension(""));
                     create_directory_safely(&output_dir)?;
                     output_dir.join("index.html")
                 };
@@ -89,22 +165,50 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 }
 
                 let mut context = tera::Context::new();
-                let title = frontmatter["title"].as_str().unwrap_or("Untitled").to_string();
+                let title = frontmatter["title"]
+                    .as_str()
+                    .unwrap_or("Untitled")
+                    .to_string();
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
                 context.insert("table_of_contents", &toc);
                 context.insert("has_images", &html_content.contains("<img"));
 
+                let current_path = relative_path.replace(".md", "");
+                let clean_current_path = if current_path == "index" {
+                    "".to_string()
+                } else {
+                    current_path
+                };
+                let backlinks: Vec<Backlink> = backlink_map
+                    .get(&clean_current_path)
+                    .unwrap_or(&HashSet::new())
+                    .iter()
+                    .map(|(title, path)| Backlink {
+                        title: title.clone(),
+                        path: path.clone(),
+                    })
+                    .collect();
+                context.insert("backlinks", &backlinks);
+
+                println!(
+                    "{}: Page {} has {} backlinks",
+                    "DEBUG".purple(),
+                    clean_current_path.yellow(),
+                    backlinks.len().to_string().green()
+                );
+
                 let rendered = tera.render("content.html", &context)?;
                 let minified = minify(rendered.as_bytes(), &minify_cfg);
                 safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
                 println!(
-                    "{} {} -> {} (with lazy loading)",
+                    "{} {} -> {} (with {} backlinks and lazy loading)",
                     "Converting".green(),
                     entry.path().display().to_string().yellow(),
-                    output_path.display().to_string().yellow()
+                    output_path.display().to_string().yellow(),
+                    backlinks.len()
                 );
             } else {
                 process_content_images(&entry, &dist_static, &lazy_dir, &config)?;
@@ -115,8 +219,12 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 continue;
             }
 
-            let relative_path = entry.path().strip_prefix("content")?;
-            let output_dir = dist.join(relative_path);
+            let relative_path = entry
+                .path()
+                .strip_prefix("content")?
+                .to_string_lossy()
+                .replace('\\', "/");
+            let output_dir = dist.join(relative_path.replace('/', "\\"));
             create_directory_safely(&output_dir)?;
             let items = create_listing(entry.path())?;
 
@@ -140,6 +248,11 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("{}", "Build completed successfully with lazy loading support!".green().bold());
+    println!(
+        "{}",
+        "Build completed successfully with backlink support!"
+            .green()
+            .bold()
+    );
     Ok(())
 }
