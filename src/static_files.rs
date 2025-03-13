@@ -25,8 +25,8 @@ pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{} {} -> {}",
                             "Copying and minifying".green(),
-                            entry.path().display().to_string().yellow(),
-                            output_path.display().to_string().yellow()
+                            entry.path().display().to_string().yellow().replace('\\', "/").yellow(),
+                            output_path.display().to_string().yellow().replace('\\', "/").yellow()
                         );
                     }
                     Some("js") => {
@@ -43,8 +43,8 @@ pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{} {} -> {}",
                             "Copying and minifying".green(),
-                            entry.path().display().to_string().yellow(),
-                            output_path.display().to_string().yellow()
+                            entry.path().display().to_string().yellow().replace('\\', "/").yellow(),
+                            output_path.display().to_string().yellow().replace('\\', "/").yellow()
                         );
                     }
                     _ => {
@@ -52,8 +52,8 @@ pub fn process_static_files(dist_static: &Path) -> Result<(), Box<dyn Error>> {
                         println!(
                             "{} {} -> {}",
                             "Copying".green(),
-                            entry.path().display().to_string().yellow(),
-                            output_path.display().to_string().yellow()
+                            entry.path().display().to_string().yellow().replace('\\', "/").yellow(),
+                            output_path.display().to_string().yellow().replace('\\', "/").yellow()
                         );
                     }
                 }

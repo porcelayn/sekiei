@@ -21,5 +21,5 @@ title: "My Post"
 date: "2023-10-15"
 ---
 
-# heading
+# frontmatter is needed for the page to be generated
 ```

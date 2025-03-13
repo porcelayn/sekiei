@@ -61,8 +61,9 @@ pub fn build() -> Result<(), Box<dyn Error>> {
 
     init_file_cache();
 
-    // generate backlinks in the first loop 
-    let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new(); // Changed Vec to HashSet
+    // generate backlinks in the first loop
+    let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new();
+    println!("{}", "Collecting backlinks...".blue());
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -102,15 +103,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                             format!("/{}", source_path.replace(".md", ""))
                         };
 
-                        println!(
-                            "{}: Found link from {} to {} (resolved as {})",
-                            "DEBUG".purple(),
-                            source_path.yellow(),
-                            dest_url.cyan(),
-                            target_path.green()
-                        );
-
-                        // Use insert instead of push to deduplicate
                         backlink_map
                             .entry(target_path)
                             .or_insert_with(HashSet::new)
@@ -122,10 +114,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     }
 
     // generate pages with backlinks in the second loop
-    println!(
-        "{}",
-        "Second pass: Generating pages with backlinks...".blue()
-    );
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -156,7 +144,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 let (frontmatter, md_content) = extract_frontmatter(&content)?;
                 let (mut html_content, toc) = markdown_to_html(md_content, entry.path());
                 html_content = add_lazy_loading(&html_content, config.images.compress_to_webp);
-
                 if config.images.compress_to_webp {
                     html_content = html_content
                         .replace(".jpg", ".webp")
@@ -192,23 +179,24 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     .collect();
                 context.insert("backlinks", &backlinks);
 
-                println!(
-                    "{}: Page {} has {} backlinks",
-                    "DEBUG".purple(),
-                    clean_current_path.yellow(),
-                    backlinks.len().to_string().green()
-                );
-
                 let rendered = tera.render("content.tera", &context)?;
                 let minified = minify(rendered.as_bytes(), &minify_cfg);
                 safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
                 println!(
-                    "{} {} -> {} (with {} backlinks and lazy loading)",
+                    "{} {} -> {} (with and lazy loading)",
                     "Converting".green(),
-                    entry.path().display().to_string().yellow(),
-                    output_path.display().to_string().yellow(),
-                    backlinks.len()
+                    entry
+                        .path()
+                        .display()
+                        .to_string()
+                        .replace('\\', "/")
+                        .yellow(),
+                    output_path
+                        .display()
+                        .to_string()
+                        .replace('\\', "/")
+                        .yellow(),
                 );
             } else {
                 process_content_images(&entry, &dist_static, &lazy_dir, &config)?;
@@ -242,17 +230,17 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             println!(
                 "{} {} -> {}",
                 "Creating listing for".green(),
-                entry.path().display().to_string().yellow(),
-                output_dir.display().to_string().yellow()
+                entry
+                    .path()
+                    .display()
+                    .to_string()
+                    .replace('\\', "/")
+                    .yellow(),
+                output_dir.display().to_string().replace('\\', "/").yellow()
             );
         }
     }
 
-    println!(
-        "{}",
-        "Build completed successfully!"
-            .green()
-            .bold()
-    );
+    println!("{}", "Build completed successfully!".green().bold());
     Ok(())
 }

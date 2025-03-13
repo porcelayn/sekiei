@@ -94,8 +94,8 @@ pub fn process_content_images(
             println!(
                 "{} {} -> {} (WebP) with placeholder",
                 "Converting".green(),
-                entry.path().display().to_string().yellow(),
-                output_path.display().to_string().yellow()
+                entry.path().display().to_string().replace('\\', "/").yellow(),
+                output_path.display().to_string().replace('\\', "/").yellow()
             );
         }
         Some(ext) if ext == "jpg" || ext == "jpeg" => {
@@ -114,8 +114,8 @@ pub fn process_content_images(
             println!(
                 "{} {} -> {} (quality: {}) with placeholder",
                 "Compressing".green(),
-                entry.path().display().to_string().yellow(),
-                output_path.display().to_string().yellow(),
+                entry.path().display().to_string().replace('\\', "/").yellow(),
+                output_path.display().to_string().replace('\\', "/").yellow(),
                 quality.to_string().cyan()
             );
         }
@@ -150,8 +150,8 @@ pub fn process_content_images(
             println!(
                 "{} {} -> {} (quality: {}) with placeholder",
                 "Compressing".green(),
-                entry.path().display().to_string().yellow(),
-                output_path.display().to_string().yellow(),
+                entry.path().display().to_string().yellow().replace('\\', "/").yellow(),
+                output_path.display().to_string().yellow().replace('\\', "/").yellow(),
                 quality.to_string().cyan()
             );
         }
@@ -160,8 +160,8 @@ pub fn process_content_images(
             println!(
                 "{} {} -> {}",
                 "Copying".green(),
-                entry.path().display().to_string().yellow(),
-                output_path.display().to_string().yellow()
+                entry.path().display().to_string().yellow().replace('\\', "/").yellow(),
+                output_path.display().to_string().yellow().replace('\\', "/").yellow()
             );
         }
     }
