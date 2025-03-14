@@ -642,6 +642,222 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
     .map(|(k, v)| (k.to_string(), v.to_string()))
     .collect::<HashMap<_, _>>();
 
+    // Obsidian Light
+    let obsidian_light = vec![
+        ("background_color", "#f5f5f5"),
+        ("text_color", "#2d2d2d"),
+        ("link_color", "#5577cc"),
+        ("heading_color", "#8839ef"),
+        ("code_background", "#e8e8e8"),
+        ("code_text", "#2d2d2d"),
+        ("border_color", "#d3d3d3"),
+        ("accent_color", "#5577cc"),
+        ("blockquote_color", "#666666"),
+        ("secondary_background", "#ececec"),
+        ("secondary_accent", "#dd7878"),
+        ("highlight_add", "rgba(87, 160, 112, 0.3)"),
+        ("highlight_del", "rgba(210, 77, 87, 0.3)"),
+        ("highlight", "rgba(85, 119, 204, 0.3)"),
+        ("type", "#5577cc"),
+        ("constant", "#fe640b"),
+        ("string", "#40a02b"),
+        ("comment", "#666666"),
+        ("keyword", "#8839ef"),
+        ("function", "#d20f39"),
+        ("variable", "#7287fd"),
+        ("punctuation", "#2d2d2d"),
+        ("markup_heading", "#d20f39"),
+        ("diff_plus", "#e7f0e4"),
+        ("diff_minus", "#fcecea"),
+        ("attribute", "#179299"),
+        ("constructor", "#df8e1d"),
+        ("tag", "#ea76cb"),
+        ("escape", "#d20f39"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Obsidian Dark
+    let obsidian_dark = vec![
+        ("background_color", "#2d2d2d"),
+        ("text_color", "#e6e6e6"),
+        ("link_color", "#7aa2f7"),
+        ("heading_color", "#cba6f7"),
+        ("code_background", "#363636"),
+        ("code_text", "#e6e6e6"),
+        ("border_color", "#4a4a4a"),
+        ("accent_color", "#7aa2f7"),
+        ("blockquote_color", "#8a8a8a"),
+        ("secondary_background", "#252525"),
+        ("secondary_accent", "#f38ba8"),
+        ("highlight_add", "rgba(166, 227, 161, 0.3)"),
+        ("highlight_del", "rgba(243, 139, 168, 0.3)"),
+        ("highlight", "rgba(122, 162, 247, 0.3)"),
+        ("type", "#7aa2f7"),
+        ("constant", "#ff9e64"),
+        ("string", "#9ece6a"),
+        ("comment", "#8a8a8a"),
+        ("keyword", "#cba6f7"),
+        ("function", "#f38ba8"),
+        ("variable", "#b4befe"),
+        ("punctuation", "#e6e6e6"),
+        ("markup_heading", "#f38ba8"),
+        ("diff_plus", "rgba(166, 227, 161, 0.3)"),
+        ("diff_minus", "rgba(243, 139, 168, 0.3)"),
+        ("attribute", "#94e2d5"),
+        ("constructor", "#f9e2af"),
+        ("tag", "#f5c2e7"),
+        ("escape", "#f38ba8"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Everforest Light
+    let everforest_light = vec![
+        ("background_color", "#fdf6e3"),
+        ("text_color", "#5c6a72"),
+        ("link_color", "#3a94c5"),
+        ("heading_color", "#df5b61"),
+        ("code_background", "#f4f0d9"),
+        ("code_text", "#5c6a72"),
+        ("border_color", "#e0dcc7"),
+        ("accent_color", "#3a94c5"),
+        ("blockquote_color", "#82968b"),
+        ("secondary_background", "#f8f4e1"),
+        ("secondary_accent", "#f85552"),
+        ("highlight_add", "rgba(93, 146, 119, 0.3)"),
+        ("highlight_del", "rgba(223, 91, 97, 0.3)"),
+        ("highlight", "rgba(58, 148, 197, 0.3)"),
+        ("type", "#3a94c5"),
+        ("constant", "#dfa000"),
+        ("string", "#8da101"),
+        ("comment", "#82968b"),
+        ("keyword", "#df5b61"),
+        ("function", "#f57d26"),
+        ("variable", "#35a77c"),
+        ("punctuation", "#5c6a72"),
+        ("markup_heading", "#f57d26"),
+        ("diff_plus", "#eef5ee"),
+        ("diff_minus", "#fceeee"),
+        ("attribute", "#8da101"),
+        ("constructor", "#dfa000"),
+        ("tag", "#df5b61"),
+        ("escape", "#f57d26"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Everforest Dark
+    let everforest_dark = vec![
+        ("background_color", "#2d353b"),
+        ("text_color", "#d3c6aa"),
+        ("link_color", "#7fbbb3"),
+        ("heading_color", "#e67e80"),
+        ("code_background", "#343f44"),
+        ("code_text", "#d3c6aa"),
+        ("border_color", "#4a555b"),
+        ("accent_color", "#7fbbb3"),
+        ("blockquote_color", "#859289"),
+        ("secondary_background", "#272e33"),
+        ("secondary_accent", "#e69875"),
+        ("highlight_add", "rgba(95, 164, 120, 0.3)"),
+        ("highlight_del", "rgba(230, 126, 128, 0.3)"),
+        ("highlight", "rgba(127, 187, 179, 0.3)"),
+        ("type", "#7fbbb3"),
+        ("constant", "#dbbc7f"),
+        ("string", "#a7c080"),
+        ("comment", "#859289"),
+        ("keyword", "#e67e80"),
+        ("function", "#d699b6"),
+        ("variable", "#83c092"),
+        ("punctuation", "#d3c6aa"),
+        ("markup_heading", "#d699b6"),
+        ("diff_plus", "rgba(95, 164, 120, 0.3)"),
+        ("diff_minus", "rgba(230, 126, 128, 0.3)"),
+        ("attribute", "#a7c080"),
+        ("constructor", "#dbbc7f"),
+        ("tag", "#e67e80"),
+        ("escape", "#d699b6"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Solarized Light
+    let solarized_light = vec![
+        ("background_color", "#fdf6e3"),
+        ("text_color", "#657b83"),
+        ("link_color", "#268bd2"),
+        ("heading_color", "#d33682"),
+        ("code_background", "#eee8d5"),
+        ("code_text", "#657b83"),
+        ("border_color", "#e0e0dc"),
+        ("accent_color", "#268bd2"),
+        ("blockquote_color", "#93a1a1"),
+        ("secondary_background", "#f5efe0"),
+        ("secondary_accent", "#cb4b16"),
+        ("highlight_add", "rgba(133, 153, 0, 0.3)"),
+        ("highlight_del", "rgba(211, 54, 130, 0.3)"),
+        ("highlight", "rgba(38, 139, 210, 0.3)"),
+        ("type", "#268bd2"),
+        ("constant", "#b58900"),
+        ("string", "#859900"),
+        ("comment", "#93a1a1"),
+        ("keyword", "#d33682"),
+        ("function", "#2aa198"),
+        ("variable", "#6c71c4"),
+        ("punctuation", "#657b83"),
+        ("markup_heading", "#2aa198"),
+        ("diff_plus", "#f0f5e9"),
+        ("diff_minus", "#fceff4"),
+        ("attribute", "#859900"),
+        ("constructor", "#b58900"),
+        ("tag", "#d33682"),
+        ("escape", "#2aa198"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Solarized Dark
+    let solarized_dark = vec![
+        ("background_color", "#002b36"),
+        ("text_color", "#839496"),
+        ("link_color", "#268bd2"),
+        ("heading_color", "#d33682"),
+        ("code_background", "#073642"),
+        ("code_text", "#839496"),
+        ("border_color", "#35535a"),
+        ("accent_color", "#268bd2"),
+        ("blockquote_color", "#586e75"),
+        ("secondary_background", "#01313f"),
+        ("secondary_accent", "#cb4b16"),
+        ("highlight_add", "rgba(133, 153, 0, 0.3)"),
+        ("highlight_del", "rgba(211, 54, 130, 0.3)"),
+        ("highlight", "rgba(38, 139, 210, 0.3)"),
+        ("type", "#268bd2"),
+        ("constant", "#b58900"),
+        ("string", "#859900"),
+        ("comment", "#586e75"),
+        ("keyword", "#d33682"),
+        ("function", "#2aa198"),
+        ("variable", "#6c71c4"),
+        ("punctuation", "#839496"),
+        ("markup_heading", "#2aa198"),
+        ("diff_plus", "rgba(133, 153, 0, 0.3)"),
+        ("diff_minus", "rgba(211, 54, 130, 0.3)"),
+        ("attribute", "#859900"),
+        ("constructor", "#b58900"),
+        ("tag", "#d33682"),
+        ("escape", "#2aa198"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
     // Return all preset themes
     vec![
         (
@@ -658,6 +874,9 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
             (tokyonight_light, tokyonight_dark),
         ),
         ("monokai".to_string(), (monokai_light, monokai_dark)),
+        ("obsidian".to_string(), (obsidian_light, obsidian_dark)),
+        ("everforest".to_string(), (everforest_light, everforest_dark)),
+        ("solarized".to_string(), (solarized_light, solarized_dark)),
     ]
     .into_iter()
     .collect::<HashMap<_, _>>()
