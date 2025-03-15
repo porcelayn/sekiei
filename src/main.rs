@@ -10,6 +10,7 @@ mod images;
 mod static_files;
 mod theme;
 mod lazy_load;
+mod rss;
 
 use clap::{Parser, Subcommand};
 use std::error::Error;

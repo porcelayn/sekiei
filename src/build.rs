@@ -5,6 +5,7 @@ use crate::{
     lazy_load::{add_lazy_loading, setup_lazy_loading},
     listing::create_listing,
     markdown::{Backlink, extract_frontmatter, markdown_to_html},
+    rss::generate_rss,
     paths::{init_file_cache, process_paths},
     static_files::process_static_files,
     theme::generate_theme_css,
@@ -60,6 +61,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     };
 
     init_file_cache();
+    generate_rss(&dist, &config)?;
 
     // generate backlinks in the first loop
     let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new();

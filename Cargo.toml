@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chrono = "0.4.40"
 clap = { version = "4.5.31", features = ["derive"] }
 colored = "3.0.0"
 css-minify = "0.5.2"
@@ -17,6 +18,7 @@ minify-html = "0.15.0"
 minify-js = "0.6.0"
 pulldown-cmark = "0.13.0"
 regex = "1.11.1"
+rss = "2.0.12"
 serde = {version="1.0.218", features = ["derive"]}
 serde_yaml = "0.9.34"
 tera = "1.20.0"

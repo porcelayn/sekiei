@@ -348,7 +348,6 @@ pub fn markdown_to_html(markdown: &str, file_path: &Path) -> (String, Vec<TOCEnt
                     if let Some(original_path) = map.get(&sanitized_name) {
                         let infer = Infer::new();
                         if let Ok(Some(info)) = infer.get_from_path(original_path) {
-                            println!("Found video file: {:?}", info.mime_type());
                             if info.mime_type().starts_with("video/") {
                                 handling_video = true;
                                 video_dest_url = dest_url.to_string();
