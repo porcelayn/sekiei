@@ -5,11 +5,12 @@ use crate::{
     lazy_load::{add_lazy_loading, setup_lazy_loading},
     listing::create_listing,
     markdown::{Backlink, extract_frontmatter, markdown_to_html},
-    rss::generate_rss,
     paths::{init_file_cache, process_paths},
     static_files::process_static_files,
     theme::generate_theme_css,
     utils::is_not_hidden_dir,
+    rss::generate_rss,
+    file_tree::{process_file_tree_assets, generate_file_tree_html}
 };
 use colored::Colorize;
 use minify_html::minify;
@@ -45,7 +46,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     generate_theme_css(&config, &theme_css_path)?;
 
     setup_lazy_loading(&dist_static)?;
-
+    process_file_tree_assets(&dist_static)?;
     process_static_files(&dist_static)?;
 
     println!("{}", "Loading Templates defined in templates".blue());
@@ -61,9 +62,10 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     };
 
     init_file_cache();
-    generate_rss(&dist, &config)?;
+    generate_rss(dist, &config)?;
 
-    // generate backlinks in the first loop
+    let file_tree_html = generate_file_tree_html(&config)?;
+
     let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new();
     println!("{}", "Collecting backlinks...".blue());
     for entry in WalkDir::new("content")
@@ -115,7 +117,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // generate pages with backlinks in the second loop
     for entry in WalkDir::new("content")
         .into_iter()
         .filter_entry(is_not_hidden_dir)
@@ -163,6 +164,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 context.insert("frontmatter", &frontmatter);
                 context.insert("table_of_contents", &toc);
                 context.insert("has_images", &html_content.contains("<img"));
+                context.insert("file_tree", &file_tree_html);
 
                 let current_path = relative_path.replace(".md", "");
                 let clean_current_path = if current_path == "index" {

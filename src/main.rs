@@ -3,6 +3,7 @@ mod config;
 mod file_ops;
 mod listing;
 mod markdown;
+mod file_tree;
 mod paths;
 mod serve;
 mod utils;
