@@ -1,3 +1,8 @@
+[general]
+title = "My Blog"
+description = "A personal blog about technology and programming."
+base_url = "https://myblog.com"
+
 [theme]
 theme_type = "preset"
 preset = "catppuccin"

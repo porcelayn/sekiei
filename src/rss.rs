@@ -68,7 +68,7 @@ pub fn generate_rss(dist: &Path, config: &Config) -> Result<(), Box<dyn Error>> 
         rss_items.push(
             ItemBuilder::default()
                 .title(Some(title))
-                .link(Some(format!("https://yourdomain.com{}", url))) 
+                .link(Some(format!("{}{}", config.general.base_url.clone(),url))) 
                 .description(description)
                 .pub_date(Some(pub_date.to_rfc2822()))
                 .build(),
@@ -76,9 +76,9 @@ pub fn generate_rss(dist: &Path, config: &Config) -> Result<(), Box<dyn Error>> 
     }
 
     let channel = ChannelBuilder::default()
-        .title("Your Site Title")
-        .link("https://yourdomain.com")
-        .description("Your Site Description") 
+        .title(config.general.title.clone())
+        .link(config.general.base_url.clone())
+        .description(config.general.description.clone()) 
         .items(rss_items)
         .build();
 

@@ -27,6 +27,7 @@ impl ThemeType {
 #[derive(Deserialize)]
 pub struct Config {
     pub theme: ThemeConfig,
+    pub general: GeneralConfig,
     #[serde(default)]
     pub images: ImagesConfig,
 }
@@ -57,6 +58,13 @@ pub struct ThemeConfig {
     pub theme_type: ThemeType,
     pub preset: Option<String>,
     pub custom: Option<CustomTheme>,
+}
+
+#[derive(Deserialize)]
+pub struct GeneralConfig {
+    pub base_url: String,
+    pub title: String,
+    pub description: String,
 }
 
 #[derive(Deserialize)]
