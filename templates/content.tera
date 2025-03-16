@@ -57,7 +57,6 @@
             loadGiscus();
         });
 
-
         function loadGiscus() {
             const container = document.getElementById("giscus-container");
             const existingScript = document.getElementById("giscus-script");
