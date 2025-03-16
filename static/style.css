@@ -4,6 +4,40 @@ body {
     color: var(--text-color);
 }
 
-.color-bg-primary {
-    background-color: var(--background-color) !important;
+#content {
+    width: 100%;
+}
+
+.markdown-content, .comments {
+    margin: 0 auto;
+    width: 50%;
+}
+
+@media (max-width: 1200px) {
+    .markdown-content, .comments {
+        width: 75%;
+    }
+}
+
+@media (max-width: 768px) {
+    .markdown-content, .comments {
+        width: 100%;
+    }
+}
+
+video {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+}
+
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.markdown-content a {
+    color: var(--link-color);
+    text-decoration: underline;
+    text-underline-offset: 4px;
 }

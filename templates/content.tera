@@ -8,10 +8,10 @@
 <link rel="stylesheet" href="/static/file_tree.css">
 {% endblock head %}
 {% block content %}
-<h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
 <div class="sidebar">
     {{ file_tree | safe }}
 </div>
+<div class="right-sidebar">
 {% if table_of_contents | length > 0 %}
 <nav class="toc">
     <h2>Table of Contents</h2>
@@ -34,7 +34,9 @@
     </ul>
 </div>
 {% endif %}
+</div>
 
+<h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
 <article>
     <div class="markdown-content">
         {{ markdown | safe }}
@@ -90,12 +92,6 @@
             container.appendChild(script);
         }
 
-        function toggleTheme() {
-            const currentTheme = localStorage.getItem("theme") || "light";
-            const newTheme = currentTheme === "dark" ? "light" : "dark";
-            setTheme(newTheme);
-            loadGiscus();
-        }
     </script>
 </section>
 {% endif %}
