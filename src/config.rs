@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use wildmatch::WildMatch;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeType {
     Custom,
@@ -24,23 +25,37 @@ impl ThemeType {
     //     }
     // }
 }
-#[derive(Deserialize)]
-pub struct Config {
-    pub theme: ThemeConfig,
-    pub general: GeneralConfig,
-    #[serde(default)]
-    pub images: ImagesConfig,
+
+#[derive(Deserialize, Debug, Serialize, Clone)]
+pub struct ThemeConfig {
+    pub theme_type: ThemeType,
+    pub preset: Option<String>,
+    pub custom: Option<CustomTheme>,
 }
 
-#[derive(Deserialize, Default, Serialize)]
-pub struct ImagesConfig {
+#[derive(Deserialize, Debug, Serialize, Clone)]
+pub struct GeneralConfig {
+    pub base_url: String,
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(Deserialize, Debug, Serialize, Clone)]
+pub struct CustomTheme {
+    pub light: HashMap<String, String>,
+    pub dark: HashMap<String, String>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Images {
     #[serde(default = "default_quality")]
     pub quality: u8,
     #[serde(default)]
     pub compress_to_webp: bool,
 }
 
-impl ImagesConfig {
+impl Images {
     pub fn validate(&self) -> Result<(), String> {
         if self.quality != default_quality() && self.compress_to_webp {
             return Err("Fields 'quality' and 'compress_to_webp' cannot be set at the same time in [images]".to_string());
@@ -53,24 +68,90 @@ fn default_quality() -> u8 {
     100
 }
 
-#[derive(Deserialize)]
-pub struct ThemeConfig {
-    pub theme_type: ThemeType,
-    pub preset: Option<String>,
-    pub custom: Option<CustomTheme>,
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Giscus {
+    #[serde(default)]
+    pub enable: bool,
+    #[serde(default)]
+    pub disabled_routes: Vec<String>,
+    #[serde(default)]
+    pub enabled_routes: Vec<String>,
+    // Required fields when enable = true
+    pub repo: Option<String>,
+    pub repo_id: Option<String>,
+    pub category: Option<String>,
+    pub category_id: Option<String>,
 }
 
-#[derive(Deserialize)]
-pub struct GeneralConfig {
-    pub base_url: String,
-    pub title: String,
-    pub description: String,
+impl Giscus {
+    pub fn validate(&self) -> Result<(), String> {
+        if !self.disabled_routes.is_empty() && !self.enabled_routes.is_empty() {
+            return Err("Giscus configuration error: 'disabled_routes' and 'enabled_routes' cannot both be specified at the same time".to_string());
+        }
+
+        if self.enable {
+            if self.repo.is_none() {
+                return Err("Giscus configuration error: 'repo' is required when enable = true".to_string());
+            }
+            if self.repo_id.is_none() {
+                return Err("Giscus configuration error: 'repo_id' is required when enable = true".to_string());
+            }
+            if self.category.is_none() {
+                return Err("Giscus configuration error: 'category' is required when enable = true".to_string());
+            }
+            if self.category_id.is_none() {
+                return Err("Giscus configuration error: 'category_id' is required when enable = true".to_string());
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn is_enabled_for_route(&self, route: &str) -> bool {
+        if !self.enable {
+            return false;
+        }
+
+        if !self.enabled_routes.is_empty() {
+            self.enabled_routes.iter().any(|r| WildMatch::new(r).matches(route))
+        } else if !self.disabled_routes.is_empty() {
+            !self.disabled_routes.iter().any(|r| WildMatch::new(r).matches(route))
+        } else {
+            true
+        }
+    }
 }
 
-#[derive(Deserialize)]
-pub struct CustomTheme {
-    pub light: HashMap<String, String>,
-    pub dark: HashMap<String, String>,
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Config {
+    pub theme: ThemeConfig,
+    pub general: GeneralConfig,
+    pub images: Images,
+    #[serde(default)]
+    pub giscus: Giscus,
+}
+
+impl Config {
+    pub fn validate(&self) -> Result<(), String> {
+        self.images.validate()?;
+        self.giscus.validate()?;
+        Ok(())
+    }
+}
+
+impl Default for Giscus {
+    fn default() -> Self {
+        Giscus {
+            enable: false,
+            disabled_routes: Vec::new(),
+            enabled_routes: Vec::new(),
+            repo: None,
+            repo_id: None,
+            category: None,
+            category_id: None,
+        }
+    }
 }
 
 pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<String, String>)> {

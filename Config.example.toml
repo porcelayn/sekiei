@@ -10,3 +10,11 @@ preset = "catppuccin"
 [images]
 # quality = 25
 compress_to_webp = true
+
+[giscus]
+enable = true
+disabled_routes = ["/", "/about"]
+repo = "yourusername/your-site-comments"
+repo_id = "R_kgYOURREPOID"
+category = "Comments"
+category_id = "DIC_kwYOURCATEGORYID"

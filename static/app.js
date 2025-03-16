@@ -3,7 +3,7 @@ function copyCode(button) {
     const codeLines = codeBlock.querySelectorAll('.code-line');
     const codeText = Array.from(codeLines)
         .map(line => line.textContent)
-        .join('\n'); 
+        .join('\n');
     navigator.clipboard.writeText(codeText).then(() => {
         console.log('Copied:\n' + codeText);
     }).catch((err) => {
@@ -16,11 +16,6 @@ function setTheme(theme) {
     localStorage.setItem('theme', theme);
 }
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');

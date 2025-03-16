@@ -10,7 +10,7 @@ use crate::{
     theme::generate_theme_css,
     utils::is_not_hidden_dir,
     rss::generate_rss,
-    file_tree::{process_file_tree_assets, generate_file_tree_html}
+    file_tree::{process_file_tree_assets, generate_file_tree_html},
 };
 use colored::Colorize;
 use minify_html::minify;
@@ -38,9 +38,8 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     let config: Config =
         toml::from_str(&config_str).map_err(|e| format!("Failed to parse Config.toml: {}", e))?;
     config
-        .images
         .validate()
-        .map_err(|e| format!("Invalid [images] configuration: {}", e))?;
+        .map_err(|e| format!("Invalid configuration: {}", e))?;
 
     let theme_css_path = dist_static.join("theme.css");
     generate_theme_css(&config, &theme_css_path)?;
@@ -65,7 +64,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     generate_rss(dist, &config)?;
 
     let file_tree_html = generate_file_tree_html(&config)?;
-
+    
     let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new();
     println!("{}", "Collecting backlinks...".blue());
     for entry in WalkDir::new("content")
@@ -88,7 +87,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 .to_string();
 
             let processed_content = process_paths(md_content, entry.path());
-
             let mut options = Options::empty();
             options.insert(Options::ENABLE_GFM);
             let parser = Parser::new_ext(&processed_content, options);
@@ -159,12 +157,22 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     .as_str()
                     .unwrap_or("Untitled")
                     .to_string();
+                let current_route = if relative_path == "index.md" {
+                    "/".to_string()
+                } else {
+                    format!("/{}", relative_path.replace(".md", ""))
+                };
+
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
                 context.insert("table_of_contents", &toc);
                 context.insert("has_images", &html_content.contains("<img"));
                 context.insert("file_tree", &file_tree_html);
+                context.insert("current_route", &current_route);
+                context.insert("giscus_enabled", &config.giscus.is_enabled_for_route(&current_route));
+                context.insert("giscus", &config.giscus); 
+                context.insert("site_name", &config.general.base_url);
 
                 let current_path = relative_path.replace(".md", "");
                 let clean_current_path = if current_path == "index" {
@@ -190,17 +198,8 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 println!(
                     "{} {} -> {} (with and lazy loading)",
                     "Converting".green(),
-                    entry
-                        .path()
-                        .display()
-                        .to_string()
-                        .replace('\\', "/")
-                        .yellow(),
-                    output_path
-                        .display()
-                        .to_string()
-                        .replace('\\', "/")
-                        .yellow(),
+                    entry.path().display().to_string().replace('\\', "/").yellow(),
+                    output_path.display().to_string().replace('\\', "/").yellow(),
                 );
             } else {
                 process_content_images(&entry, &dist_static, &lazy_dir, &config)?;
@@ -234,12 +233,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             println!(
                 "{} {} -> {}",
                 "Creating listing for".green(),
-                entry
-                    .path()
-                    .display()
-                    .to_string()
-                    .replace('\\', "/")
-                    .yellow(),
+                entry.path().display().to_string().replace('\\', "/").yellow(),
                 output_dir.display().to_string().replace('\\', "/").yellow()
             );
         }
