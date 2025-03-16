@@ -1,5 +1,4 @@
 body {
-    padding: 10px;
     background: var(--background-color);
     color: var(--text-color);
 }
@@ -8,19 +7,20 @@ body {
     width: 100%;
 }
 
-.markdown-content, .comments {
+.markdown-article, .comments {
+    padding: 10px;
     margin: 0 auto;
     width: 50%;
 }
 
 @media (max-width: 1200px) {
-    .markdown-content, .comments {
+    .markdown-article, .comments {
         width: 75%;
     }
 }
 
 @media (max-width: 768px) {
-    .markdown-content, .comments {
+    .markdown-article, .comments {
         width: 100%;
     }
 }

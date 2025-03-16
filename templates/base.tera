@@ -9,16 +9,7 @@
     {% block head %}{% endblock head %}
 </head>
 <body>
-    <button id="toggle-theme">toggle theme</button>
     <div id="content" class="grow">{% block content %}{% endblock content %}</div>
-    <script>
-        function toggleTheme() {
-            const currentTheme = localStorage.getItem("theme") || "light";
-            const newTheme = currentTheme === "dark" ? "light" : "dark";
-            setTheme(newTheme);
-            loadGiscus();
-        }
-    </script>
     <script src="/static/app.js"></script>
     <script src="/static/lazyload.js"></script>
 </body>

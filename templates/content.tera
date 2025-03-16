@@ -35,10 +35,10 @@
 </div>
 {% endif %}
 </div>
-
-<h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
-<article>
+<button id="toggle-theme">toggle theme</button>
+<article class="markdown-article">
     <div class="markdown-content">
+        <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
         {{ markdown | safe }}
     </div>
 </article>
@@ -46,27 +46,32 @@
 <section class="comments mt-8">
     <h2>Comments</h2>
     <div class="giscus" id="giscus-container">
-        <script id="giscus-script" src="https://giscus.app/client.js" data-repo="{{ giscus.repo | default(value='') }}"
+        <script id="giscus-script" src="https://giscus.app/client.js" 
+            data-repo="{{ giscus.repo | default(value='') }}"
             data-repo-id="{{ giscus.repo_id | default(value='') }}"
             data-category="{{ giscus.category | default(value='') }}"
-            data-category-id="{{ giscus.category_id | default(value='') }}" data-mapping="pathname" data-strict="0"
-            data-reactions-enabled="1" data-emit-metadata="0" data-input-position="top" data-theme="transparent_dark"
-            data-lang="en" data-loading="lazy" crossorigin="anonymous" async>
-            </script>
+            data-category-id="{{ giscus.category_id | default(value='') }}" 
+            data-mapping="pathname" 
+            data-strict="0"
+            data-reactions-enabled="1" 
+            data-emit-metadata="0" 
+            data-input-position="top" 
+            data-theme="transparent_dark"
+            data-lang="en" 
+            data-loading="lazy" 
+            crossorigin="anonymous" 
+            async>
+        </script>
     </div>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            loadGiscus();
-        });
-
-        function loadGiscus() {
+        window.loadGiscus = function() {
             const container = document.getElementById("giscus-container");
             const existingScript = document.getElementById("giscus-script");
             if (existingScript) {
                 existingScript.remove();
             }
 
-            const theme = localStorage.getItem("theme") || "dark"; 
+            const theme = localStorage.getItem("theme") || "dark";
             const darkTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/transparent_dark.css";
             const lightTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/transparent_light.css";
             const themeUrl = theme === "dark" ? darkTheme : lightTheme;
@@ -90,8 +95,11 @@
             script.async = true;
 
             container.appendChild(script);
-        }
+        };
 
+        document.addEventListener("DOMContentLoaded", () => {
+            window.loadGiscus();
+        });
     </script>
 </section>
 {% endif %}
