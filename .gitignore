@@ -4,3 +4,4 @@ content
 dist
 Config.toml
 recipe.toml
+.vscode
