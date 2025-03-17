@@ -1,20 +1,30 @@
 {% extends "base.tera" %}
+{% block head %}
+  <link rel="stylesheet" href="/static/file_tree.css">
+  <script src="/static/file_tree.js"></script>
+{% endblock head %}
 {% block title %}Contents of {{ dir_path }}{% endblock title %}
 {% block content %}
 <ul>
-{% for item in items %}
-  {% set ext = item.name|lower|split(pat=".")|last %}
-  {% if ext == "jpg" or ext == "jpeg" or ext == "png" %}
-    <li>
-      {% if compress_to_webp %}
-        <a href="/static/{{ item.name|replace(from='.jpg', to='.webp')|replace(from='.jpeg', to='.webp')|replace(from='.png', to='.webp') }}">{{ item.name }}</a>
-      {% else %}
-        <a href="/static/{{ item.name }}">{{ item.name }}</a>
-      {% endif %}
-    </li>
-  {% else %}
-    <li><a href="{{ item.url }}">{{ item.name }}</a></li>
-  {% endif %}
-{% endfor %}
+  <div class="container">
+    <div class="sidebar">
+    <button id="toggle-theme">toggle theme</button>
+      {{ file_tree|safe }}
+    </div>
+    <div class="listing-main-content">
+      <h1>Directory: {{ dir_path }}</h1>
+      <ul>
+        {% for item in items %}
+        <li>
+          <a href="{{ item.url }}">
+            {{ item.name }}
+          </a>
+          {% if item.date %} - {{ item.date }}{% endif %}
+          {% if item.description %} - {{ item.description }}{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
 </ul>
 {% endblock content %}

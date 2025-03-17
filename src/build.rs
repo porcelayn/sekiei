@@ -63,8 +63,6 @@ pub fn build() -> Result<(), Box<dyn Error>> {
     init_file_cache();
     generate_rss(dist, &config)?;
 
-    let file_tree_html = generate_file_tree_html(&config)?;
-    
     let mut backlink_map: HashMap<String, HashSet<(String, String)>> = HashMap::new();
     println!("{}", "Collecting backlinks...".blue());
     for entry in WalkDir::new("content")
@@ -163,6 +161,9 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                     format!("/{}", relative_path.replace(".md", ""))
                 };
 
+                // Generate file tree HTML specific to this route
+                let file_tree_html = generate_file_tree_html(&config, &current_route)?;
+
                 context.insert("title", &title);
                 context.insert("markdown", &html_content);
                 context.insert("frontmatter", &frontmatter);
@@ -171,7 +172,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 context.insert("file_tree", &file_tree_html);
                 context.insert("current_route", &current_route);
                 context.insert("giscus_enabled", &config.giscus.is_enabled_for_route(&current_route));
-                context.insert("giscus", &config.giscus); 
+                context.insert("giscus", &config.giscus);
                 context.insert("site_name", &config.general.base_url);
 
                 let current_path = relative_path.replace(".md", "");
@@ -196,7 +197,7 @@ pub fn build() -> Result<(), Box<dyn Error>> {
                 safely_write_file(&output_path, String::from_utf8(minified)?.as_str())?;
 
                 println!(
-                    "{} {} -> {} (with and lazy loading)",
+                    "{} {} -> {} (with lazy loading)",
                     "Converting".green(),
                     entry.path().display().to_string().replace('\\', "/").yellow(),
                     output_path.display().to_string().replace('\\', "/").yellow(),
@@ -220,9 +221,15 @@ pub fn build() -> Result<(), Box<dyn Error>> {
             let items = create_listing(entry.path())?;
 
             let mut context = tera::Context::new();
+            let current_route = format!("/{}", relative_path);
+            let file_tree_html = generate_file_tree_html(&config, &current_route)?;
+
             context.insert("items", &items);
             context.insert("dir_path", &relative_path);
             context.insert("compress_to_webp", &config.images.compress_to_webp);
+            context.insert("file_tree", &file_tree_html);
+            context.insert("current_route", &current_route);
+
             let rendered = tera.render("listing.tera", &context)?;
             let minified = minify(rendered.as_bytes(), &minify_cfg);
             safely_write_file(

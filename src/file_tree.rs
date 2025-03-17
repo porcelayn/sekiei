@@ -96,32 +96,47 @@ pub struct FileNode {
     pub children: Vec<FileNode>,
 }
 
-pub fn generate_file_tree_html(config: &Config) -> Result<String, Box<dyn Error>> {
+pub fn generate_file_tree_html(config: &Config, current_route: &str) -> Result<String, Box<dyn Error>> {
     let nodes = build_file_tree(Path::new("content"), Path::new(""), config);
     
     let mut html = String::new();
     html.push_str("<div class=\"file-tree\">\n<ul>\n");
     for node in nodes {
-        html.push_str(&render_file_node(&node));
+        html.push_str(&render_file_node(&node, current_route));
     }
     html.push_str("</ul>\n</div>");
     Ok(html)
 }
 
-fn render_file_node(node: &FileNode) -> String {
+fn render_file_node(node: &FileNode, current_route: &str) -> String {
     let mut html = String::new();
+    let is_current = node.path == current_route || 
+                    (current_route == "/" && node.path == "") ||
+                    (node.is_dir && current_route.starts_with(&format!("/{}", node.path)));
+    
     if node.is_dir {
+        let is_expanded = is_current || node.children.iter().any(|child| {
+            current_route == child.path || 
+            (current_route == "/" && child.path == "") ||
+            current_route.starts_with(&format!("/{}", child.path))
+        });
+        
         html.push_str(&format!(
             "<li class=\"directory mb-1\">\n\
-             <div class=\"folder-label\">\n\
-             <span class=\"\"><i class=\"ph filetree-icon filetree-folder ph-caret-right\"></i></span>\n\
-             <span class=\"folder-name text-sm\">{}</span>\n\
+             <div class=\"folder-label flex items-center cursor-pointer text-neutral-600 dark:text-neutral-200 py-1\">\n\
+             <span class=\"toggle-icon transform transition-transform duration-200 mr-1 {}\"><i class=\"ph filetree-icon filetree-folder ph-caret-right\"></i></span>\n\
+             <span class=\"folder-name text-sm {}\">{}</span>\n\
              </div>\n",
+            if is_expanded { "rotate-90" } else { "" },
+            if is_current { "font-bold" } else { "" },
             node.name
         ));
-        html.push_str("<ul class=\"folder-contents hidden ml-4\">\n");
+        html.push_str(&format!(
+            "<ul class=\"folder-contents {} ml-4\">\n",
+            if is_expanded { "" } else { "hidden" }
+        ));
         for child in &node.children {
-            html.push_str(&render_file_node(child));
+            html.push_str(&render_file_node(child, current_route));
         }
         html.push_str("</ul>\n</li>\n");
     } else {
@@ -136,17 +151,19 @@ fn render_file_node(node: &FileNode) -> String {
                  node.path.ends_with(".mov") {
             "ph ph-video filetree-video"
         } else {
-            "ph ph-file" 
+            "ph ph-file"
         };
 
         html.push_str(&format!(
             "<li class=\"file mb-1\">\n\
-            <i class=\"{icon_class} mr-1\"></i>
-             <a href=\"/{}\" class=\"file-link py-1.5 text-sm flex items-center dark:text-neutral-400 dark:hover:text-neutral-200 transition text-neutral-600 hover:text-neutral-500\">\n\
-             {}\n\
+             <a href=\"/{}\" class=\"file-link {}\">\n\
+             <i class=\"{} mr-1\"></i>{}\n\
              </a>\n\
              </li>\n",
-            node.path, node.name
+            node.path,
+            if is_current { "font-bold" } else { "" },
+            icon_class,
+            node.name
         ));
     }
     html
@@ -192,7 +209,7 @@ pub fn build_file_tree(base: &Path, relative: &Path, config: &Config) -> Vec<Fil
 
             if path.extension().map_or(false, |ext| ext == "md") {
                 let default_name = path
-                    .file_stem() 
+                    .file_stem()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_string();
@@ -233,7 +250,7 @@ pub fn build_file_tree(base: &Path, relative: &Path, config: &Config) -> Vec<Fil
                 final_path = if path_str.ends_with(".md") {
                     let trimmed = &path_str[..path_str.len() - 3];
                     if trimmed == "index" && relative.as_os_str().is_empty() {
-                        "".to_string() // Reroute root index.md to "/"
+                        "".to_string()
                     } else {
                         trimmed.to_string()
                     }
@@ -241,9 +258,8 @@ pub fn build_file_tree(base: &Path, relative: &Path, config: &Config) -> Vec<Fil
                     path_str.clone()
                 };
             } else {
-                // Static file with WebP conversion check
                 name = path
-                    .file_stem() // Changed from file_name to file_stem to remove extension
+                    .file_stem()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_string();

@@ -105,3 +105,9 @@ video {
     color: var(--text-color);
     text-decoration: none;
 }
+
+.listing-main-content {
+    padding: 0px;
+    margin: 0 auto;
+    width: 55%;
+}
