@@ -9,11 +9,12 @@
 {% endblock head %}
 {% block content %}
 <div class="sidebar">
+    <button id="toggle-theme">toggle theme</button>
     {{ file_tree | safe }}
 </div>
 <div class="right-sidebar">
 {% if table_of_contents | length > 0 %}
-<nav class="toc">
+<div class="toc">
     <h2>Table of Contents</h2>
     <ul>
         {% for entry in table_of_contents %}
@@ -22,7 +23,7 @@
         </li>
         {% endfor %}
     </ul>
-</nav>
+</div>
 {% endif %}
 {% if backlinks and backlinks | length > 0 %}
 <div class="backlinks">
@@ -35,7 +36,6 @@
 </div>
 {% endif %}
 </div>
-<button id="toggle-theme">toggle theme</button>
 <article class="markdown-article">
     <div class="markdown-content">
         <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ title }}</h1>
@@ -72,8 +72,8 @@
             }
 
             const theme = localStorage.getItem("theme") || "dark";
-            const darkTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/transparent_dark.css";
-            const lightTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/transparent_light.css";
+            const darkTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/no_border_transparent_dark.css";
+            const lightTheme = "https://cdn.jsdelivr.net/gh/namishh/giscus@refs/heads/main/styles/themes/no_border_transparent_light.css";
             const themeUrl = theme === "dark" ? darkTheme : lightTheme;
 
             const script = document.createElement("script");

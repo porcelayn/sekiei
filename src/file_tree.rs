@@ -113,8 +113,8 @@ fn render_file_node(node: &FileNode) -> String {
     if node.is_dir {
         html.push_str(&format!(
             "<li class=\"directory mb-1\">\n\
-             <div class=\"folder-label flex items-center cursor-pointer text-neutral-600 dark:text-neutral-200 py-1\">\n\
-             <span class=\"toggle-icon transform transition-transform duration-200 mr-1\"><i class=\"ph ph-caret-right\"></i></span>\n\
+             <div class=\"folder-label\">\n\
+             <span class=\"\"><i class=\"ph filetree-icon filetree-folder ph-caret-right\"></i></span>\n\
              <span class=\"folder-name text-sm\">{}</span>\n\
              </div>\n",
             node.name
@@ -125,8 +125,23 @@ fn render_file_node(node: &FileNode) -> String {
         }
         html.push_str("</ul>\n</li>\n");
     } else {
+        let icon_class = if node.path.ends_with(".md") {
+            "ph filetree-icon filetree-page ph-file-text"
+        } else if node.path.ends_with(".webp") || node.path.ends_with(".jpg") || 
+                  node.path.ends_with(".jpeg") || node.path.ends_with(".png") {
+            "ph ph-image filetree-image"
+        } else if node.path.ends_with(".gif") {
+            "ph ph-gif filetree-gif"
+        } else if node.path.ends_with(".mp4") || node.path.ends_with(".webm") || 
+                 node.path.ends_with(".mov") {
+            "ph ph-video filetree-video"
+        } else {
+            "ph ph-file" 
+        };
+
         html.push_str(&format!(
             "<li class=\"file mb-1\">\n\
+            <i class=\"{icon_class} mr-1\"></i>
              <a href=\"/{}\" class=\"file-link py-1.5 text-sm flex items-center dark:text-neutral-400 dark:hover:text-neutral-200 transition text-neutral-600 hover:text-neutral-500\">\n\
              {}\n\
              </a>\n\
@@ -177,7 +192,7 @@ pub fn build_file_tree(base: &Path, relative: &Path, config: &Config) -> Vec<Fil
 
             if path.extension().map_or(false, |ext| ext == "md") {
                 let default_name = path
-                    .file_stem()
+                    .file_stem() 
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_string();
@@ -227,6 +242,12 @@ pub fn build_file_tree(base: &Path, relative: &Path, config: &Config) -> Vec<Fil
                 };
             } else {
                 // Static file with WebP conversion check
+                name = path
+                    .file_stem() // Changed from file_name to file_stem to remove extension
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                    
                 final_path = format!("static/{}", crate::utils::sanitize_filename(&path_str));
                 if config.images.compress_to_webp {
                     if path.extension().map_or(false, |ext| {

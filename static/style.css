@@ -3,14 +3,20 @@ body {
     color: var(--text-color);
 }
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 #content {
     width: 100%;
 }
 
 .markdown-article, .comments {
-    padding: 10px;
+    padding: 0px;
     margin: 0 auto;
-    width: 50%;
+    width: 55%;
 }
 
 @media (max-width: 1200px) {
@@ -40,4 +46,62 @@ video {
     color: var(--link-color);
     text-decoration: underline;
     text-underline-offset: 4px;
+}
+
+.sidebar {
+    width: 22.5%;
+    position: fixed;
+    border-right: 1px solid var(--border-color);
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: var(--secondary-background);
+    padding: 1rem;
+}
+
+
+.right-sidebar {
+    width: 22.5%;
+    position: fixed;
+    border-left: 1px solid var(--border-color);
+    top: 0;
+    right: 0;
+    height: 100%;
+    padding: 1rem;
+}
+
+.sidebar .folder-label {
+    margin: 2px 0 0 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.sidebar .file {
+    display: flex;
+    color: var(--blockquote-color);
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+
+.sidebar .file a {
+    margin: 2px 0 0 0;
+    color: var(--blockquote-color);
+}
+
+.sidebar .file a:visited {
+    color: var(--blockquote-color);
+}
+
+.sidebar .file a:link {
+    color: var(--blockquote-color);
+}
+
+
+.sidebar .file a:hover {
+    color: var(--text-color);
+    text-decoration: none;
 }
