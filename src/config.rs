@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use wildmatch::WildMatch;
 use std::collections::HashMap;
+use wildmatch::WildMatch;
 
 #[derive(Debug, PartialEq, Deserialize, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -46,7 +46,6 @@ pub struct CustomTheme {
     pub dark: HashMap<String, String>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Images {
     #[serde(default = "default_quality")]
@@ -67,7 +66,6 @@ impl Images {
 fn default_quality() -> u8 {
     100
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Giscus {
@@ -92,16 +90,27 @@ impl Giscus {
 
         if self.enable {
             if self.repo.is_none() {
-                return Err("Giscus configuration error: 'repo' is required when enable = true".to_string());
+                return Err(
+                    "Giscus configuration error: 'repo' is required when enable = true".to_string(),
+                );
             }
             if self.repo_id.is_none() {
-                return Err("Giscus configuration error: 'repo_id' is required when enable = true".to_string());
+                return Err(
+                    "Giscus configuration error: 'repo_id' is required when enable = true"
+                        .to_string(),
+                );
             }
             if self.category.is_none() {
-                return Err("Giscus configuration error: 'category' is required when enable = true".to_string());
+                return Err(
+                    "Giscus configuration error: 'category' is required when enable = true"
+                        .to_string(),
+                );
             }
             if self.category_id.is_none() {
-                return Err("Giscus configuration error: 'category_id' is required when enable = true".to_string());
+                return Err(
+                    "Giscus configuration error: 'category_id' is required when enable = true"
+                        .to_string(),
+                );
             }
         }
 
@@ -114,9 +123,14 @@ impl Giscus {
         }
 
         if !self.enabled_routes.is_empty() {
-            self.enabled_routes.iter().any(|r| WildMatch::new(r).matches(route))
+            self.enabled_routes
+                .iter()
+                .any(|r| WildMatch::new(r).matches(route))
         } else if !self.disabled_routes.is_empty() {
-            !self.disabled_routes.iter().any(|r| WildMatch::new(r).matches(route))
+            !self
+                .disabled_routes
+                .iter()
+                .any(|r| WildMatch::new(r).matches(route))
         } else {
             true
         }
@@ -947,6 +961,221 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
     .map(|(k, v)| (k.to_string(), v.to_string()))
     .collect::<HashMap<_, _>>();
 
+    let kanagawa_light = vec![
+        ("background_color", "#f7f3e9"),
+        ("text_color", "#545464"),
+        ("link_color", "#1f7ab3"),
+        ("heading_color", "#d0587e"),
+        ("code_background", "#ece8dd"),
+        ("code_text", "#545464"),
+        ("border_color", "#d5d1c6"),
+        ("accent_color", "#1f7ab3"),
+        ("blockquote_color", "#79798e"),
+        ("secondary_background", "#f0ece1"),
+        ("secondary_accent", "#a63c5e"),
+        ("highlight_add", "rgba(108, 153, 110, 0.3)"),
+        ("highlight_del", "rgba(208, 88, 126, 0.3)"),
+        ("highlight", "rgba(31, 122, 179, 0.3)"),
+        ("type", "#1f7ab3"),
+        ("constant", "#a63c5e"),
+        ("string", "#6c996e"),
+        ("comment", "#79798e"),
+        ("keyword", "#d0587e"),
+        ("function", "#b3663c"),
+        ("variable", "#2e869c"),
+        ("punctuation", "#545464"),
+        ("markup_heading", "#b3663c"),
+        ("diff_plus", "#eef5ee"),
+        ("diff_minus", "#fceeee"),
+        ("attribute", "#6c996e"),
+        ("constructor", "#a63c5e"),
+        ("tag", "#d0587e"),
+        ("escape", "#b3663c"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Kanagawa Dark
+    let kanagawa_dark = vec![
+        ("background_color", "#1f1f28"),
+        ("text_color", "#dcd7ba"),
+        ("link_color", "#7fb4ca"),
+        ("heading_color", "#e46876"),
+        ("code_background", "#2a2a37"),
+        ("code_text", "#dcd7ba"),
+        ("border_color", "#363646"),
+        ("accent_color", "#7fb4ca"),
+        ("blockquote_color", "#727169"),
+        ("secondary_background", "#181820"),
+        ("secondary_accent", "#ffa066"),
+        ("highlight_add", "rgba(115, 162, 112, 0.3)"),
+        ("highlight_del", "rgba(228, 104, 118, 0.3)"),
+        ("highlight", "rgba(127, 180, 202, 0.3)"),
+        ("type", "#7fb4ca"),
+        ("constant", "#ffa066"),
+        ("string", "#98bb6c"),
+        ("comment", "#727169"),
+        ("keyword", "#e46876"),
+        ("function", "#ffa066"),
+        ("variable", "#7aa89f"),
+        ("punctuation", "#dcd7ba"),
+        ("markup_heading", "#ffa066"),
+        ("diff_plus", "rgba(115, 162, 112, 0.3)"),
+        ("diff_minus", "rgba(228, 104, 118, 0.3)"),
+        ("attribute", "#98bb6c"),
+        ("constructor", "#ffa066"),
+        ("tag", "#e46876"),
+        ("escape", "#ffa066"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Oxocarbon Light
+    let oxocarbon_light = vec![
+        ("background_color", "#f9f9f9"),
+        ("text_color", "#393939"),
+        ("link_color", "#ee5396"),
+        ("heading_color", "#ff7eb6"),
+        ("code_background", "#f0f0f0"),
+        ("code_text", "#393939"),
+        ("border_color", "#dedede"),
+        ("accent_color", "#ee5396"),
+        ("blockquote_color", "#6e6e6e"),
+        ("secondary_background", "#f4f4f4"),
+        ("secondary_accent", "#08bdba"),
+        ("highlight_add", "rgba(33, 155, 98, 0.3)"),
+        ("highlight_del", "rgba(238, 83, 150, 0.3)"),
+        ("highlight", "rgba(255, 126, 182, 0.3)"),
+        ("type", "#ee5396"),
+        ("constant", "#ff7eb6"),
+        ("string", "#42be65"),
+        ("comment", "#6e6e6e"),
+        ("keyword", "#be95ff"),
+        ("function", "#08bdba"),
+        ("variable", "#3ddbd9"),
+        ("punctuation", "#393939"),
+        ("markup_heading", "#08bdba"),
+        ("diff_plus", "#e9f5ed"),
+        ("diff_minus", "#fcecf2"),
+        ("attribute", "#42be65"),
+        ("constructor", "#ff7eb6"),
+        ("tag", "#be95ff"),
+        ("escape", "#08bdba"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Oxocarbon Dark
+    let oxocarbon_dark = vec![
+        ("background_color", "#161616"),
+        ("text_color", "#f2f4f8"),
+        ("link_color", "#ee5396"),
+        ("heading_color", "#ff7eb6"),
+        ("code_background", "#252525"),
+        ("code_text", "#f2f4f8"),
+        ("border_color", "#393939"),
+        ("accent_color", "#ee5396"),
+        ("blockquote_color", "#999999"),
+        ("secondary_background", "#1e1e1e"),
+        ("secondary_accent", "#08bdba"),
+        ("highlight_add", "rgba(33, 155, 98, 0.3)"),
+        ("highlight_del", "rgba(238, 83, 150, 0.3)"),
+        ("highlight", "rgba(255, 126, 182, 0.3)"),
+        ("type", "#ee5396"),
+        ("constant", "#ff7eb6"),
+        ("string", "#42be65"),
+        ("comment", "#999999"),
+        ("keyword", "#be95ff"),
+        ("function", "#08bdba"),
+        ("variable", "#3ddbd9"),
+        ("punctuation", "#f2f4f8"),
+        ("markup_heading", "#08bdba"),
+        ("diff_plus", "rgba(33, 155, 98, 0.3)"),
+        ("diff_minus", "rgba(238, 83, 150, 0.3)"),
+        ("attribute", "#42be65"),
+        ("constructor", "#ff7eb6"),
+        ("tag", "#be95ff"),
+        ("escape", "#08bdba"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Base16 Default Light
+    let base16_light = vec![
+        ("background_color", "#f5f5f5"),
+        ("text_color", "#202020"),
+        ("link_color", "#d70000"),
+        ("heading_color", "#af00db"),
+        ("code_background", "#e8e8e8"),
+        ("code_text", "#202020"),
+        ("border_color", "#d0d0d0"),
+        ("accent_color", "#d70000"),
+        ("blockquote_color", "#666666"),
+        ("secondary_background", "#ececec"),
+        ("secondary_accent", "#d75f00"),
+        ("highlight_add", "rgba(00, 135, 00, 0.3)"),
+        ("highlight_del", "rgba(215, 0, 0, 0.3)"),
+        ("highlight", "rgba(215, 95, 0, 0.3)"),
+        ("type", "#d70000"),
+        ("constant", "#d75f00"),
+        ("string", "#008700"),
+        ("comment", "#666666"),
+        ("keyword", "#af00db"),
+        ("function", "#00afaf"),
+        ("variable", "#0087af"),
+        ("punctuation", "#202020"),
+        ("markup_heading", "#00afaf"),
+        ("diff_plus", "#e9f5e9"),
+        ("diff_minus", "#fcecea"),
+        ("attribute", "#008700"),
+        ("constructor", "#d75f00"),
+        ("tag", "#af00db"),
+        ("escape", "#00afaf"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
+    // Base16 Default Dark
+    let base16_dark = vec![
+        ("background_color", "#151515"),
+        ("text_color", "#d0d0d0"),
+        ("link_color", "#d70000"),
+        ("heading_color", "#af00db"),
+        ("code_background", "#303030"),
+        ("code_text", "#d0d0d0"),
+        ("border_color", "#505050"),
+        ("accent_color", "#d70000"),
+        ("blockquote_color", "#707070"),
+        ("secondary_background", "#1c1c1c"),
+        ("secondary_accent", "#d75f00"),
+        ("highlight_add", "rgba(00, 135, 00, 0.3)"),
+        ("highlight_del", "rgba(215, 0, 0, 0.3)"),
+        ("highlight", "rgba(215, 95, 0, 0.3)"),
+        ("type", "#d70000"),
+        ("constant", "#d75f00"),
+        ("string", "#008700"),
+        ("comment", "#707070"),
+        ("keyword", "#af00db"),
+        ("function", "#00afaf"),
+        ("variable", "#0087af"),
+        ("punctuation", "#d0d0d0"),
+        ("markup_heading", "#00afaf"),
+        ("diff_plus", "rgba(00, 135, 00, 0.3)"),
+        ("diff_minus", "rgba(215, 0, 0, 0.3)"),
+        ("attribute", "#008700"),
+        ("constructor", "#d75f00"),
+        ("tag", "#af00db"),
+        ("escape", "#00afaf"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_string(), v.to_string()))
+    .collect::<HashMap<_, _>>();
+
     // Return all preset themes
     vec![
         (
@@ -964,8 +1193,14 @@ pub fn get_preset_themes() -> HashMap<String, (HashMap<String, String>, HashMap<
         ),
         ("monokai".to_string(), (monokai_light, monokai_dark)),
         ("obsidian".to_string(), (obsidian_light, obsidian_dark)),
-        ("everforest".to_string(), (everforest_light, everforest_dark)),
+        (
+            "everforest".to_string(),
+            (everforest_light, everforest_dark),
+        ),
         ("solarized".to_string(), (solarized_light, solarized_dark)),
+        ("kanagawa".to_string(), (kanagawa_light, kanagawa_dark)),
+        ("oxocarbon".to_string(), (oxocarbon_light, oxocarbon_dark)),
+        ("base16".to_string(), (base16_light, base16_dark)),
     ]
     .into_iter()
     .collect::<HashMap<_, _>>()
